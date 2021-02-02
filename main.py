@@ -8,9 +8,8 @@ import time
 import sys
 import datetime
 import os
-
+import glob
 import boto3
-from botocore.exceptions import ClientError
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -111,7 +110,7 @@ def process(code, postal_code, url, vaccine_code):
     print()
     print_timestamp()
 
-    print(f'Fetching data from {web_url} ..')
+    print(f'Using URL {web_url} ..')
 
     # Do stuff with your driver
     driver.get(web_url)
@@ -144,6 +143,11 @@ def process(code, postal_code, url, vaccine_code):
     driver.close()
     return success
 
+def remove_screenshot_files():
+    files = glob.glob('/out/*.png')
+    for f in files:
+        os.remove(f)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
     parser.add_argument('--code', help="Corona Vermittlungscode", required=True)
@@ -159,8 +163,16 @@ if __name__ == '__main__':
         send_mail('Test Mail',
                   'This is just a test. If you can read this text, everything is just fine!',
                   None,
-                  None)
+                  glob.glob('out/*.png'))
         sys.exit()
 
+    remove_screenshot_files()
     success=process(args.code, args.postal_code, args.url, args.vaccine_code)
+
+    if success:
+        send_mail('Corona Impf-o-mat :: Notification',
+                  'Corona vaccines are available, see the attached screenshots :)',
+                  None,
+                  glob.glob('out/*.png'))
+
     sys.exit(0 if success else 10)
