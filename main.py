@@ -5,6 +5,7 @@ import argparse
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 import time
+import sys
 
 screenshot_index=1
 
@@ -53,10 +54,19 @@ def process(code, postal_code, url, vaccine_code):
     # dismiss the cookie banner
     driver.find_element_by_class_name("cookies-info-close").click()
 
-    print("done")
+    success = False
+
+    if "leider keine Termine" in driver.page_source:
+        text = driver.find_element_by_class_name("ets-search-no-results").text
+        print(text)
+    else:
+        print(driver.page_source)
+        success=True
+
     screenshot(driver)
 
     driver.close()
+    return success
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
@@ -66,4 +76,5 @@ if __name__ == '__main__':
     parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)", default="L920")
     args = parser.parse_args()
 
-    process(args.code, args.postal_code, args.url, args.vaccine_code)
+    success=process(args.code, args.postal_code, args.url, args.vaccine_code)
+    sys.exit(0 if success else 10)
