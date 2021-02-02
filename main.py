@@ -1,18 +1,37 @@
 #!/usr/bin/env python3
 
 import argparse
-from pprint import pprint
-import requests
+
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+
+def set_chrome_options():
+    """Sets chrome options for Selenium.
+    Chrome options for headless browser is enabled.
+    """
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_prefs = {}
+    chrome_options.experimental_options["prefs"] = chrome_prefs
+    chrome_prefs["profile.default_content_settings"] = {"images": 2}
+    return chrome_options
+
 
 def process(code, postal_code, url, vaccine_code):
-    session = requests.Session()
+    chrome_options = set_chrome_options()
+    driver = webdriver.Chrome(options=chrome_options)
+
 
     web_url=f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
-
     print(f'Fetching data from {web_url} ..')
-    response = session.get(web_url)
 
-    print(response.text)
+    # Do stuff with your driver
+    driver.get(web_url)
+    screenshot = driver.save_screenshot('out/test.png')
+
+    driver.close()
 
 
 if __name__ == '__main__':
