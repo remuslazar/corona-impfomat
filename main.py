@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 import time
 import sys
+import datetime
 
 screenshot_index=1
 
@@ -28,25 +29,30 @@ def screenshot(driver):
     driver.save_screenshot(f'out/test{screenshot_index}.png')
     screenshot_index += 1
 
+def print_timestamp():
+    print(datetime.datetime.utcnow())
 
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
-
     web_url=f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+
+    print()
+    print_timestamp()
+
     print(f'Fetching data from {web_url} ..')
 
     # Do stuff with your driver
     driver.get(web_url)
     screenshot(driver)
-    print("Waiting for the 30 second banner to disappear..")
+    # print("Waiting for the 30 second banner to disappear..")
 
     time.sleep(35)
     screenshot(driver)
 
     # now we should see a page with a "termin suchen" button
-    print("Click on the big button")
+    # print("Click on the big button")
     button = driver.find_element_by_class_name("kv-btn")
     button.click()
     time.sleep(1)
