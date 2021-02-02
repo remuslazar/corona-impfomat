@@ -15,7 +15,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 
-screenshot_index=1
+screenshot_index = 1
 
 # SES and mail configuration
 SENDER = os.environ.get('SENDER')
@@ -23,8 +23,9 @@ RECIPIENT = os.environ.get('RECIPIENT')
 AWS_REGION = os.environ.get('SES_AWS_REGION')
 CHARSET = "UTF-8"
 
+
 def create_multipart_message(
-        sender: str, recipients: list, title: str, text: str=None, html: str=None, attachments: list=None)\
+        sender: str, recipients: list, title: str, text: str = None, html: str = None, attachments: list = None) \
         -> MIMEMultipart:
     """
     Creates a MIME multipart message object.
@@ -65,7 +66,7 @@ def create_multipart_message(
 
 
 def send_mail(
-        title: str, text: str=None, html: str=None, attachments: list=None) -> dict:
+        title: str, text: str = None, html: str = None, attachments: list = None) -> dict:
     """
     Send email to recipients. Sends one mail to all recipients.
     The sender needs to be a verified email in SES.
@@ -92,20 +93,23 @@ def set_chrome_options():
     chrome_prefs["profile.default_content_settings"] = {"images": 2}
     return chrome_options
 
+
 def screenshot(driver):
     global screenshot_index
 
     driver.save_screenshot(f'out/test{screenshot_index}.png')
     screenshot_index += 1
 
+
 def print_timestamp():
     print(datetime.datetime.utcnow())
+
 
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
-    web_url=f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+    web_url = f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
 
     print()
     print_timestamp()
@@ -129,36 +133,39 @@ def process(code, postal_code, url, vaccine_code):
     # dismiss the cookie banner
     driver.find_element_by_class_name("cookies-info-close").click()
 
-    success = False
+    _success = False
 
     if "leider keine Termine" in driver.page_source:
         text = driver.find_element_by_class_name("ets-search-no-results").text
         print(text)
     else:
         print(driver.page_source)
-        success=True
+        _success = True
 
     screenshot(driver)
 
     driver.close()
-    return success
+    return _success
+
 
 def remove_screenshot_files():
     files = glob.glob('/out/*.png')
     for f in files:
         os.remove(f)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
     parser.add_argument('--code', help="Corona Vermittlungscode", required=True)
     parser.add_argument('--postal-code', help="German Postal Code", required=True)
     parser.add_argument('--url', help="Service-URL", default="https://005-iz.impfterminservice.de/")
-    parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)", default="L920")
+    parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)",
+                        default="L920")
     parser.add_argument('--test-mail', help="Just send a mail for testing", action='store_true')
 
     args = parser.parse_args()
 
-    if (args.test_mail):
+    if args.test_mail:
         print(f'Sending a mail to {SENDER} ..')
         send_mail('Test Mail',
                   'This is just a test. If you can read this text, everything is just fine!',
@@ -167,7 +174,7 @@ if __name__ == '__main__':
         sys.exit()
 
     remove_screenshot_files()
-    success=process(args.code, args.postal_code, args.url, args.vaccine_code)
+    success = process(args.code, args.postal_code, args.url, args.vaccine_code)
 
     if success:
         send_mail('Corona Impf-o-mat :: Notification',
