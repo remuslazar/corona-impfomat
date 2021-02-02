@@ -138,13 +138,23 @@ def process(code, postal_code, url, vaccine_code):
     driver.find_element_by_class_name("cookies-info-close").click()
 
     success = False
+    filename = 'corona.html'
 
     if "leider keine Termine" in driver.page_source:
         text = driver.find_element_by_class_name("ets-search-no-results").text
         print(text)
     else:
-        print(driver.page_source)
-        success = True
+        if "Gefundene Termine" in driver.page_source:
+            screenshot(driver)
+            driver.find_element_by_class_name('ets-slot-button').click()
+            success=True
+
+        else:
+            print(f'Unexpected state, will save the page source as {filename}')
+
+        file=open(filename, 'w')
+        file.write(driver.page_source)
+        file.close()
 
     screenshot(driver)
 
@@ -153,7 +163,7 @@ def process(code, postal_code, url, vaccine_code):
 
 
 def remove_screenshot_files():
-    files = glob.glob('/out/*.png')
+    files = glob.glob('/out/*.*')
     for f in files:
         os.remove(f)
 
@@ -196,7 +206,7 @@ def main():
                   f'-- '
                   f'Corona Impf-o-mat',
                   None,
-                  glob.glob('out/*.png'))
+                  glob.glob('out/*.*'))
 
     sys.exit(0 if success else 10)
 
