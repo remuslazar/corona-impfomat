@@ -88,7 +88,7 @@ def set_chrome_options():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_prefs = {}
+    chrome_prefs = dict()
     chrome_options.experimental_options["prefs"] = chrome_prefs
     chrome_prefs["profile.default_content_settings"] = {"images": 2}
     return chrome_options
@@ -105,11 +105,15 @@ def print_timestamp():
     print(datetime.datetime.utcnow())
 
 
+def get_url(code, postal_code, url, vaccine_code):
+    return f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+
+
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
-    web_url = f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+    web_url = get_url(code=code, postal_code=postal_code, url=url, vaccine_code=vaccine_code)
 
     print()
     print_timestamp()
@@ -133,19 +137,19 @@ def process(code, postal_code, url, vaccine_code):
     # dismiss the cookie banner
     driver.find_element_by_class_name("cookies-info-close").click()
 
-    _success = False
+    success = False
 
     if "leider keine Termine" in driver.page_source:
         text = driver.find_element_by_class_name("ets-search-no-results").text
         print(text)
     else:
         print(driver.page_source)
-        _success = True
+        success = True
 
     screenshot(driver)
 
     driver.close()
-    return _success
+    return success
 
 
 def remove_screenshot_files():
@@ -154,7 +158,7 @@ def remove_screenshot_files():
         os.remove(f)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
     parser.add_argument('--code', help="Corona Vermittlungscode", required=True)
     parser.add_argument('--postal-code', help="German Postal Code", required=True)
@@ -170,16 +174,32 @@ if __name__ == '__main__':
         send_mail('Test Mail',
                   'This is just a test. If you can read this text, everything is just fine!',
                   None,
-                  glob.glob('out/*.png'))
+                  None)
         sys.exit()
 
     remove_screenshot_files()
     success = process(args.code, args.postal_code, args.url, args.vaccine_code)
 
+    web_url = get_url(code=args.code,
+                      postal_code=args.postal_code,
+                      url=args.url,
+                      vaccine_code=args.vaccine_code)
+
     if success:
         send_mail('Corona Impf-o-mat :: Notification',
-                  'Corona vaccines are available, see the attached screenshots :)',
+                  f'Corona vaccines are currently available, see the attached screenshots.'
+                  f''
+                  f'To book an appointment, use this URL:'
+                  f''
+                  f'<{web_url}>'
+                  f''
+                  f'-- '
+                  f'Corona Impf-o-mat',
                   None,
                   glob.glob('out/*.png'))
 
     sys.exit(0 if success else 10)
+
+
+if __name__ == '__main__':
+    main()
