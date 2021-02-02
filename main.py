@@ -7,8 +7,45 @@ from selenium import webdriver
 import time
 import sys
 import datetime
+import os
+
+import boto3
+from botocore.exceptions import ClientError
 
 screenshot_index=1
+
+# SES and mail configuration
+SENDER = os.environ.get('SENDER')
+RECIPIENT = os.environ.get('RECIPIENT')
+AWS_REGION = os.environ.get('SES_AWS_REGION')
+CHARSET = "UTF-8"
+
+def send_mail(subject, body):
+    client = boto3.client('ses', region_name=AWS_REGION)
+    try:
+        client.send_email(
+            Destination={
+                'ToAddresses': [
+                    RECIPIENT,
+                ],
+            },
+            Message={
+                'Body': {
+                    'Text': {
+                        'Charset': CHARSET,
+                        'Data': body,
+                    },
+                },
+                'Subject': {
+                    'Charset': CHARSET,
+                    'Data': subject,
+                },
+            },
+            Source=SENDER,
+        )
+    except ClientError as e:
+        print(e.response['Error']['Message'])
+
 
 def set_chrome_options():
     """Sets chrome options for Selenium.
@@ -80,7 +117,14 @@ if __name__ == '__main__':
     parser.add_argument('--postal-code', help="German Postal Code", required=True)
     parser.add_argument('--url', help="Service-URL", default="https://005-iz.impfterminservice.de/")
     parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)", default="L920")
+    parser.add_argument('--test-mail', help="Just send a mail for testing", action='store_true')
+
     args = parser.parse_args()
+
+    if (args.test_mail):
+        print(f'Sending a mail to {SENDER} ..')
+        send_mail('Test Mail', 'This is just a test. If you can read this text, everything is just fine!')
+        sys.exit()
 
     success=process(args.code, args.postal_code, args.url, args.vaccine_code)
     sys.exit(0 if success else 10)
