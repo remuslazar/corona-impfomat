@@ -2,7 +2,10 @@
 
 ## Operational Logic
 
-The app uses web-scrapping tools to interact with the `impfterminservice.de` page and check if there are corona vaccine appointments available. If so, it will send an email and also attach all relevant screenshots. 
+The app uses the Web-Scraping technology to interact with the `impfterminservice.de` page and check if there are corona vaccine appointments available. If so, it will send an email and also attach all relevant screenshots.
+
+Because https://impfterminservice.de/ needs JavaScript and to ensure maximum compatibility, the app uses a recent
+Chrome browser to perform the tasks.
 
 ## Configuration
 
