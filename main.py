@@ -10,6 +10,7 @@ import datetime
 import os
 import glob
 import boto3
+import dateutil.tz
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -101,17 +102,20 @@ def screenshot(driver):
     screenshot_index += 1
 
 
-def print_timestamp():
-    print(datetime.datetime.utcnow())
+def get_timestamp():
+    tz = dateutil.tz.gettz('Europe/Berlin')
+    return datetime.datetime.now(tz)
 
 
 def get_url(code, postal_code, url, vaccine_code):
     return f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
 
+
 def write_file(filename, text):
     file = open(filename, 'w')
     file.write(text)
     file.close()
+
 
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
@@ -119,10 +123,7 @@ def process(code, postal_code, url, vaccine_code):
 
     web_url = get_url(code=code, postal_code=postal_code, url=url, vaccine_code=vaccine_code)
 
-    print()
-    print_timestamp()
-
-    print(f'Using URL {web_url} ..')
+    print(get_timestamp(), end=' ')
 
     # Do stuff with your driver
     driver.get(web_url)
@@ -146,12 +147,13 @@ def process(code, postal_code, url, vaccine_code):
 
     if "leider keine Termine" in driver.page_source:
         text = driver.find_element_by_class_name("ets-search-no-results").text
-        print(text)
+        write_file('no-appointments-text.txt', text)
+        print(f'no appointments available')
     else:
         if "Gefundene Termine" in driver.page_source:
             screenshot(driver)
             driver.find_element_by_class_name('ets-slot-button').click()
-            success=True
+            success = True
 
         else:
             print(f'Unexpected state, will save the page source as {filename}')
