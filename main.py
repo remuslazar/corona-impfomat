@@ -123,7 +123,7 @@ def process(code, postal_code, url, vaccine_code):
 
     web_url = get_url(code=code, postal_code=postal_code, url=url, vaccine_code=vaccine_code)
 
-    print(get_timestamp(), end=' ')
+    print(get_timestamp(), end=' ', flush=True)
 
     # Do stuff with your driver
     driver.get(web_url)
