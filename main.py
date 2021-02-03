@@ -108,6 +108,10 @@ def print_timestamp():
 def get_url(code, postal_code, url, vaccine_code):
     return f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
 
+def write_file(filename, text):
+    file = open(filename, 'w')
+    file.write(text)
+    file.close()
 
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
@@ -152,9 +156,7 @@ def process(code, postal_code, url, vaccine_code):
         else:
             print(f'Unexpected state, will save the page source as {filename}')
 
-        file=open(filename, 'w')
-        file.write(driver.page_source)
-        file.close()
+        write_file(filename, driver.page_source)
 
     screenshot(driver)
 
