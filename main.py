@@ -10,6 +10,7 @@ import datetime
 import os
 import glob
 import boto3
+# noinspection PyPackageRequirements
 import dateutil.tz
 
 from email.mime.multipart import MIMEMultipart
