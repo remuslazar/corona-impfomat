@@ -45,6 +45,20 @@ You can monitor the progress using
 docker-compose logs -f
 ```
 
+This will show something like:
+
+```
+Attaching to corona-impfomat_app_1
+app_1  | Using URL: https://005-iz.impfterminservice.de/terminservice/suche/XXXX-XXXX-XXXX/XXXXX/L920
+app_1  | 2021-02-03 19:45:21.845840+01:00 no appointments available
+app_1  | 2021-02-03 19:47:00.159274+01:00 no appointments available
+app_1  | 2021-02-03 19:48:38.365646+01:00 no appointments available
+app_1  | 2021-02-03 19:50:16.293274+01:00 no appointments available
+app_1  | 2021-02-03 19:51:54.236332+01:00 no appointments available
+```
+
+The service will exit after the first successful attempt.
+
 
 Author
 ----
