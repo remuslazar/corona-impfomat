@@ -180,6 +180,7 @@ def main():
     parser.add_argument('--url', help="Service-URL", default="https://005-iz.impfterminservice.de/")
     parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)",
                         default="L920")
+    parser.add_argument('--retry', help="Retry time in seconds, 0 to disable", type=int, default=0)
     parser.add_argument('--test-mail', help="Just send a mail for testing", action='store_true')
 
     args = parser.parse_args()
@@ -192,26 +193,33 @@ def main():
                   None)
         sys.exit()
 
-    remove_screenshot_files()
-    success = process(args.code, args.postal_code, args.url, args.vaccine_code)
-
     web_url = get_url(code=args.code,
                       postal_code=args.postal_code,
                       url=args.url,
                       vaccine_code=args.vaccine_code)
 
-    if success:
-        send_mail('Corona Impf-o-mat :: Notification',
-                  f'Corona vaccines are currently available, see the attached screenshots.'
-                  f''
-                  f'To book an appointment, use this URL:'
-                  f''
-                  f'<{web_url}>'
-                  f''
-                  f'-- '
-                  f'Corona Impf-o-mat',
-                  None,
-                  glob.glob('out/*.*'))
+    print(f'Using URL: {web_url}')
+
+    while True:
+        remove_screenshot_files()
+        success = process(args.code, args.postal_code, args.url, args.vaccine_code)
+
+        if success:
+            send_mail('Corona Impf-o-mat :: Notification',
+                      f'Corona vaccines are currently available, see the attached screenshots.'
+                      f''
+                      f'To book an appointment, use this URL:'
+                      f''
+                      f'<{web_url}>'
+                      f''
+                      f'-- '
+                      f'Corona Impf-o-mat',
+                      None,
+                      glob.glob('out/*.*'))
+            break
+
+        if args.retry == 0: break
+        time.sleep(args.retry)
 
     sys.exit(0 if success else 10)
 

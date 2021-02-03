@@ -27,13 +27,22 @@ To rebuild the docker image, do:
 docker-compose build app
 ```
 
-## Run unattended (e.g. in screen)
+## Run as a service
 
-Exit code is 0 when there are vaccine appointments available. So doing
-a simple while loop the operation can be re-tried automatically:
+When doing a `docker-compose up` this app will run in a service mode.
+You need to supply valid parameter in your .env file, the docker-compose will
+use that to configure the app accordingly.
+
+When running as a service, the app will do a retry every 60 seconds and will just exit after the first successful attempt.
 
 ```sh
-while ! docker-compose run --rm app --postal-code xxx --code xxx 2>/dev/null; do sleep 120 ; done
+docker-compose up -d 
+```
+
+You can monitor the progress using
+
+```shell
+docker-compose logs -f
 ```
 
 
