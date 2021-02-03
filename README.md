@@ -33,7 +33,7 @@ Exit code is 0 when there are vaccine appointments available. So doing
 a simple while loop the operation can be re-tried automatically:
 
 ```sh
-while ! docker-compose run --rm app --postal-code xxx --code xxx ; do sleep 300 ; done
+while ! docker-compose run --rm app --postal-code xxx --code xxx 2>/dev/null; do sleep 120 ; done
 ```
 
 

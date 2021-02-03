@@ -153,6 +153,7 @@ def process(code, postal_code, url, vaccine_code):
         if "Gefundene Termine" in driver.page_source:
             screenshot(driver)
             driver.find_element_by_class_name('ets-slot-button').click()
+            print(f'Success: at least one appointment found')
             success = True
 
         else:
@@ -184,7 +185,7 @@ def main():
     args = parser.parse_args()
 
     if args.test_mail:
-        print(f'Sending a mail to {SENDER} ..')
+        print(f'Will send an email to {SENDER}.')
         send_mail('Test Mail',
                   'This is just a test. If you can read this text, everything is just fine!',
                   None,
