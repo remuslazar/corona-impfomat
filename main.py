@@ -243,7 +243,6 @@ def main():
                       f'Corona Impf-o-mat',
                       None,
                       glob.glob('out/*.*'))
-            break
 
         if args.retry == 0:
             break
