@@ -144,7 +144,6 @@ def process(code, postal_code, url, vaccine_code):
 
         if "Challenge Validation" in driver.title:
             # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
-            print(' ', end=None)
             while "Challenge Validation" in driver.title:
                 print('.', end=None)
                 time.sleep(3)
