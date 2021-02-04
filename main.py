@@ -154,7 +154,7 @@ def process(code, postal_code, url, vaccine_code):
         # now we should see a page with a "termin suchen" button
         # print("Click on the big button")
         driver.find_element_by_class_name("kv-btn").click()
-        time.sleep(1)
+        time.sleep(2)
 
         # dismiss the cookie banner
         driver.find_element_by_class_name("cookies-info-close").click()
