@@ -139,7 +139,7 @@ def process(code, postal_code, url, vaccine_code):
         screenshot(driver)
 
         if "Wartungsarbeiten" in driver.page_source:
-            print('page is currently in maintenance mode')
+            print('site is currently in maintenance mode')
             return False
 
         if "Challenge Validation" in driver.title:
