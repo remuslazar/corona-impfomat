@@ -177,7 +177,9 @@ def process(code, postal_code, url, vaccine_code):
 
             screenshot(driver)
             driver.find_element_by_class_name('ets-slot-button').click()
+            time.sleep(3)
             print(f'Success: at least one appointment found')
+            write_file('exit-page.html', driver.page_source)
             success = True
 
         screenshot(driver)
