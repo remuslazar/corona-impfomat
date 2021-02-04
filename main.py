@@ -139,9 +139,6 @@ def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
-    for cookie in all_cookies:
-        driver.add_cookie(cookie)
-
     web_url = get_url(code=code, postal_code=postal_code, url=url, vaccine_code=vaccine_code)
 
     print(get_timestamp(), end=' ', flush=True)
@@ -149,6 +146,9 @@ def process(code, postal_code, url, vaccine_code):
     try:
         # Do stuff with your driver
         driver.get(web_url)
+        for cookie in all_cookies:
+            driver.add_cookie(cookie)
+
         screenshot(driver)
 
         if "Wartungsarbeiten" in driver.page_source:
