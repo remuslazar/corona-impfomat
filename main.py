@@ -26,6 +26,11 @@ AWS_REGION = os.environ.get('SES_AWS_REGION')
 CHARSET = "UTF-8"
 
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
 def create_multipart_message(
         sender: str, recipients: list, title: str, text: str = None, html: str = None, attachments: list = None) \
         -> MIMEMultipart:
@@ -133,10 +138,18 @@ def process(code, postal_code, url, vaccine_code):
         driver.get(web_url)
         screenshot(driver)
 
+        if "Wartungsarbeiten" in driver.page_source:
+            print('page is currently in maintenance mode')
+            return False
+
         if "Challenge Validation" in driver.title:
-            # wait 30 + 2 seconds for the processing banner to disappear
-            time.sleep(32)
-            screenshot(driver)
+            # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
+            print(' ', end=None)
+            while "Challenge Validation" in driver.title:
+                time.sleep(3)
+                print('.', end=None)
+                screenshot(driver)
+            print(' ', end=None)
 
         # now we should see a page with a "termin suchen" button
         # print("Click on the big button")
@@ -154,8 +167,8 @@ def process(code, postal_code, url, vaccine_code):
             print(f'no appointments available')
 
         else:
-            if not "Gefundene Termine" in driver.page_source:
-                raise Exception(f'was expecting to see "Gefundene Termine" but this string was not found')
+            if "Gefundene Termine" not in driver.page_source:
+                raise Error(f'was expecting to see "Gefundene Termine" but this string was not found')
 
             screenshot(driver)
             driver.find_element_by_class_name('ets-slot-button').click()
@@ -163,17 +176,19 @@ def process(code, postal_code, url, vaccine_code):
             success = True
 
         screenshot(driver)
-
-        driver.close()
         return success
 
     except Exception as e:
-        ts_string=get_timestamp().strftime('%Y%m%d%H%M%S')
-        print(f'We got an error while parsing the page. Will save the screenshot and page source to error-{ts_string}-*')
+        ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
+        print(
+            f'We got an error while parsing the page. Will save the screenshot and page source to error-{ts_string}-*')
         print(e)
         screenshot(driver, f'error-{ts_string}-screenshot')
         write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
         return False
+
+    finally:
+        driver.close()
 
 
 def remove_screenshot_files():
@@ -227,7 +242,9 @@ def main():
                       glob.glob('out/*.*'))
             break
 
-        if args.retry == 0: break
+        if args.retry == 0:
+            break
+
         time.sleep(args.retry)
 
     sys.exit(0 if success else 10)
