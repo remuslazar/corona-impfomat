@@ -96,10 +96,12 @@ def set_chrome_options():
     return chrome_options
 
 
-def screenshot(driver):
+def screenshot(driver, filename=None):
     global screenshot_index
+    if filename is None:
+        filename = f'screenshot_{screenshot_index}'
 
-    driver.save_screenshot(f'out/test{screenshot_index}.png')
+    driver.save_screenshot(f'out/{filename}.png')
     screenshot_index += 1
 
 
@@ -113,7 +115,7 @@ def get_url(code, postal_code, url, vaccine_code):
 
 
 def write_file(filename, text):
-    file = open(filename, 'w')
+    file = open(f'out/{filename}', 'w')
     file.write(text)
     file.close()
 
@@ -126,50 +128,56 @@ def process(code, postal_code, url, vaccine_code):
 
     print(get_timestamp(), end=' ', flush=True)
 
-    # Do stuff with your driver
-    driver.get(web_url)
-    screenshot(driver)
-    # print("Waiting for the 30 second banner to disappear..")
+    try:
+        # Do stuff with your driver
+        driver.get(web_url)
+        screenshot(driver)
 
-    time.sleep(35)
-    screenshot(driver)
+        if "Challenge Validation" in driver.title:
+            # wait 30 + 2 seconds for the processing banner to disappear
+            time.sleep(32)
+            screenshot(driver)
 
-    # now we should see a page with a "termin suchen" button
-    # print("Click on the big button")
-    button = driver.find_element_by_class_name("kv-btn")
-    button.click()
-    time.sleep(1)
+        # now we should see a page with a "termin suchen" button
+        # print("Click on the big button")
+        driver.find_element_by_class_name("kv-btn").click()
+        time.sleep(1)
 
-    # dismiss the cookie banner
-    driver.find_element_by_class_name("cookies-info-close").click()
+        # dismiss the cookie banner
+        driver.find_element_by_class_name("cookies-info-close").click()
 
-    success = False
-    filename = 'corona.html'
+        success = False
 
-    if "leider keine Termine" in driver.page_source:
-        text = driver.find_element_by_class_name("ets-search-no-results").text
-        write_file('no-appointments-text.txt', text)
-        print(f'no appointments available')
-    else:
-        if "Gefundene Termine" in driver.page_source:
+        if "leider keine Termine" in driver.page_source:
+            text = driver.find_element_by_class_name("ets-search-no-results").text
+            write_file('no-appointments-text.txt', text)
+            print(f'no appointments available')
+
+        else:
+            if not "Gefundene Termine" in driver.page_source:
+                raise Exception(f'was expecting to see "Gefundene Termine" but this string was not found')
+
             screenshot(driver)
             driver.find_element_by_class_name('ets-slot-button').click()
             print(f'Success: at least one appointment found')
             success = True
 
-        else:
-            print(f'Unexpected state, will save the page source as {filename}')
+        screenshot(driver)
 
-        write_file(filename, driver.page_source)
+        driver.close()
+        return success
 
-    screenshot(driver)
-
-    driver.close()
-    return success
+    except Exception as e:
+        ts_string=get_timestamp().strftime('%Y%m%d%H%M%S')
+        print(f'We got an error while parsing the page. Will save the screenshot and page source to error-{ts_string}-*')
+        print(e)
+        screenshot(driver, f'error-{ts_string}-screenshot')
+        write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
+        return False
 
 
 def remove_screenshot_files():
-    files = glob.glob('/out/*.*')
+    files = glob.glob('out/screenshot_*.*')
     for f in files:
         os.remove(f)
 
