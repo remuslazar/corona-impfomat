@@ -186,10 +186,22 @@ def process(code, postal_code, url, vaccine_code):
     except Exception as e:
         ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
         print(
-            f'got an error while trying to parse the page. Will save the screenshot and page source to error-{ts_string}-*')
+            f'got an error while trying to parse the page.'
+            f'Will save the screenshot and page source to error-{ts_string}-*')
         print(e)
         screenshot(driver, f'error-{ts_string}-screenshot')
         write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
+
+        send_mail('Corona Impf-o-mat :: Error',
+                  f"""There were errors while interacting with the URL
+
+{web_url}
+
+{e}
+""",
+                  None,
+                  glob.glob(f'out/error-{ts_string}*'))
+
         return False
 
     finally:
