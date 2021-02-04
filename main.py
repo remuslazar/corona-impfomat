@@ -78,6 +78,11 @@ def send_mail(
     Send email to recipients. Sends one mail to all recipients.
     The sender needs to be a verified email in SES.
     """
+
+    text += """
+
+-- 
+Corona Impf-o-mat"""
     msg = create_multipart_message(SENDER, [RECIPIENT], title, text, html, attachments)
     ses_client = boto3.client('ses')  # Use your settings here
     return ses_client.send_raw_email(
@@ -197,7 +202,7 @@ def remove_screenshot_files():
     files = glob.glob('out/screenshot_*.*')
     for f in files:
         os.remove(f)
-    screenshot_index=1
+    screenshot_index = 1
 
 
 def main():
@@ -215,7 +220,9 @@ def main():
     if args.test_mail:
         print(f'Will send an email to {SENDER}.')
         send_mail('Test Mail',
-                  'This is just a test. If you can read this text, everything is just fine!',
+                  f"""This is just a test.
+                  
+If you can read this text, everything is just fine!""",
                   None,
                   None)
         sys.exit()
@@ -232,17 +239,16 @@ def main():
         success = process(args.code, args.postal_code, args.url, args.vaccine_code)
 
         if success:
-            send_mail('Corona Impf-o-mat :: Notification',
-                      f'Corona vaccines are currently available, see the attached screenshots.'
-                      f''
-                      f'To book an appointment, use this URL:'
-                      f''
-                      f'<{web_url}>'
-                      f''
-                      f'-- '
-                      f'Corona Impf-o-mat',
-                      None,
-                      glob.glob('out/*.*'))
+            send_mail(
+                f"""Corona Impf-o-mat :: Notification',
+Corona vaccines are currently available, see the attached screenshots.
+
+To book an appointment, use this URL:'
+
+<{web_url}>
+""",
+                None,
+                glob.glob('out/*.*'))
 
         if args.retry == 0:
             break
