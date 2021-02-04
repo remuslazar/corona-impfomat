@@ -146,9 +146,10 @@ def process(code, postal_code, url, vaccine_code):
             # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
             print(' ', end=None)
             while "Challenge Validation" in driver.title:
-                time.sleep(3)
                 print('.', end=None)
-                screenshot(driver)
+                time.sleep(3)
+
+            screenshot(driver)
             print(' ', end=None)
 
         # now we should see a page with a "termin suchen" button
