@@ -12,6 +12,7 @@ import glob
 import boto3
 # noinspection PyPackageRequirements
 import dateutil.tz
+import json
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -207,6 +208,7 @@ def process(code, postal_code, url, vaccine_code):
         return False
 
     finally:
+        write_file('all-cookies.json', json.dumps(driver.get_cookies()))
         driver.close()
 
 
