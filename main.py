@@ -19,7 +19,6 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 
 screenshot_index = 1
-all_cookies = []
 
 # SES and mail configuration
 SENDER = os.environ.get('SENDER')
@@ -134,8 +133,6 @@ def write_file(filename, text):
 
 def process(code, postal_code, url, vaccine_code):
 
-    global all_cookies
-
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -146,8 +143,6 @@ def process(code, postal_code, url, vaccine_code):
     try:
         # Do stuff with your driver
         driver.get(web_url)
-        for cookie in all_cookies:
-            driver.add_cookie(cookie)
 
         screenshot(driver)
 
@@ -170,7 +165,9 @@ def process(code, postal_code, url, vaccine_code):
         time.sleep(2)
 
         # dismiss the cookie banner
-        driver.find_element_by_class_name("cookies-info-close").click()
+        if "Cookie Hinweis" in driver.page_source:
+            driver.find_element_by_class_name("cookies-info-close").click()
+            time.sleep(1)
 
         success = False
 
@@ -215,7 +212,6 @@ def process(code, postal_code, url, vaccine_code):
         return False
 
     finally:
-        all_cookies = driver.get_cookies()
         write_file('all-cookies.json', json.dumps(driver.get_cookies()))
         driver.close()
 
