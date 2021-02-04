@@ -192,9 +192,12 @@ def process(code, postal_code, url, vaccine_code):
 
 
 def remove_screenshot_files():
+    global screenshot_index
+
     files = glob.glob('out/screenshot_*.*')
     for f in files:
         os.remove(f)
+    screenshot_index=1
 
 
 def main():
