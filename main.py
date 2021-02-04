@@ -83,7 +83,8 @@ def send_mail(
     text += """
 
 -- 
-Corona Impf-o-mat"""
+Corona Impf-o-mat
+"""
     msg = create_multipart_message(SENDER, [RECIPIENT], title, text, html, attachments)
     ses_client = boto3.client('ses')  # Use your settings here
     return ses_client.send_raw_email(
