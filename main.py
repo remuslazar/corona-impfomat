@@ -147,10 +147,12 @@ def process(code, postal_code, url, vaccine_code):
         # we will take screenshots from time to time, this being the initial one
         screenshot(driver)
 
+        # check if the page is currently in maintenance mode
         if "Wartungsarbeiten" in driver.page_source:
             print('site is currently in maintenance mode')
             return False
 
+        # check if the challenge validation page is the current one (this should be the case, anyway)
         if "Challenge Validation" in driver.title:
             timeout_sec=50
             timeout_after=datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
@@ -168,7 +170,7 @@ def process(code, postal_code, url, vaccine_code):
         driver.find_element_by_class_name("kv-btn").click()
         time.sleep(2)
 
-        # dismiss the cookie banner
+        # dismiss the cookie banner, else we will not be able to click on stuff behind it
         if "Cookie Hinweis" in driver.page_source:
             driver.find_element_by_class_name("cookies-info-close").click()
             time.sleep(1)
