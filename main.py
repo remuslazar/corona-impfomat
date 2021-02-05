@@ -204,6 +204,7 @@ def process(code, postal_code, url, vaccine_code):
         screenshot(driver, f'error-{ts_string}-screenshot')
         write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
 
+        files=glob.glob(f'out/error-{ts_string}*')
         send_mail('Corona Impf-o-mat :: Error',
                   f"""There were errors while interacting with the URL
 
@@ -212,7 +213,10 @@ def process(code, postal_code, url, vaccine_code):
 {e}
 """,
                   None,
-                  glob.glob(f'out/error-{ts_string}*'))
+                  files)
+
+        for file in files:
+            os.remove(file)
 
         return False
 
