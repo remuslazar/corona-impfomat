@@ -142,9 +142,9 @@ def process(code, postal_code, url, vaccine_code):
     print(get_timestamp(), end=' ', flush=True)
 
     try:
-        # Do stuff with your driver
         driver.get(web_url)
 
+        # we will take screenshots from time to time, this being the initial one
         screenshot(driver)
 
         if "Wartungsarbeiten" in driver.page_source:
@@ -165,7 +165,6 @@ def process(code, postal_code, url, vaccine_code):
             print(' ', end='')
 
         # now we should see a page with a "termin suchen" button
-        # print("Click on the big button")
         driver.find_element_by_class_name("kv-btn").click()
         time.sleep(2)
 
