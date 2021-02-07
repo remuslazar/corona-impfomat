@@ -153,14 +153,14 @@ def process(code, postal_code, url, vaccine_code):
 
         # check if the challenge validation page is the current one (this should be the case, anyway)
         if "Challenge Validation" in driver.title:
-            timeout_sec = 50
+            timeout_sec = 60
             timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
             # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
             while "Challenge Validation" in driver.title:
                 print('.', end='')
                 time.sleep(3)
                 if datetime.datetime.now() > timeout_after:
-                    raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec} s')
+                    raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec}s)')
 
             screenshot(driver)
             print(' ', end='')
