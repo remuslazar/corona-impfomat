@@ -5,7 +5,7 @@ services:
     build: .
     volumes:
       - ./out:/app/out
-      - ./main.py:/app/main.py
+      - ./src:/app/src
     command: --retry 60 --postal-code ${CORONA_POSTAL_CODE} --code ${CORONA_CODE}
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}

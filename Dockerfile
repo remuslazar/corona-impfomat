@@ -27,6 +27,7 @@ COPY ./requirements.txt ./
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-COPY . .
+# We do not need that because of the volume mapping in docker-compose.yml
+#COPY ./src ./
 
-ENTRYPOINT ["python", "./main.py"]
+ENTRYPOINT ["python", "./src/main.py"]

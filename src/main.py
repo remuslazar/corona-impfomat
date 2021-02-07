@@ -25,6 +25,7 @@ SENDER = os.environ.get('SENDER')
 RECIPIENT = os.environ.get('RECIPIENT')
 AWS_REGION = os.environ.get('SES_AWS_REGION')
 CHARSET = "UTF-8"
+OUT_PATH = "../out"
 
 
 class Error(Exception):
@@ -113,7 +114,7 @@ def screenshot(driver, filename=None):
     if filename is None:
         filename = f'screenshot_{screenshot_index}'
 
-    driver.save_screenshot(f'out/{filename}.png')
+    driver.save_screenshot(f'{OUT_PATH}/{filename}.png')
     screenshot_index += 1
 
 
@@ -127,7 +128,7 @@ def get_url(code, postal_code, url, vaccine_code):
 
 
 def write_file(filename, text):
-    file = open(f'out/{filename}', 'w')
+    file = open(f'{OUT_PATH}/{filename}', 'w')
     file.write(text)
     file.close()
 
@@ -204,7 +205,7 @@ def process(code, postal_code, url, vaccine_code):
         screenshot(driver, f'error-{ts_string}-screenshot')
         write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
 
-        files = glob.glob(f'out/error-{ts_string}*')
+        files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
         send_mail('Corona Impf-o-mat :: Error',
                   f"""There were errors while interacting with the URL
 
@@ -228,7 +229,7 @@ def process(code, postal_code, url, vaccine_code):
 def remove_screenshot_files():
     global screenshot_index
 
-    files = glob.glob('out/screenshot_*.*')
+    files = glob.glob(f'f{OUT_PATH}/screenshot_*.*')
     for f in files:
         os.remove(f)
     screenshot_index = 1
@@ -278,7 +279,7 @@ To book an appointment, use this URL:'
 <{web_url}>
 """,
                     None,
-                    glob.glob('out/*.*'))
+                    glob.glob(f'{OUT_PATH}/*.*'))
 
         except Exception as e:
             print(f'processing error: {e}')
