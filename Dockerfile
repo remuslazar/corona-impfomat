@@ -30,4 +30,5 @@ RUN pip install -r requirements.txt
 # We do not need that because of the volume mapping in docker-compose.yml
 #COPY ./src ./
 
-ENTRYPOINT ["python", "./src/main.py"]
+WORKDIR /app/src
+ENTRYPOINT ["python", "./main.py"]
