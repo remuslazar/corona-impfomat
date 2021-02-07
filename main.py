@@ -133,7 +133,6 @@ def write_file(filename, text):
 
 
 def process(code, postal_code, url, vaccine_code):
-
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -154,8 +153,8 @@ def process(code, postal_code, url, vaccine_code):
 
         # check if the challenge validation page is the current one (this should be the case, anyway)
         if "Challenge Validation" in driver.title:
-            timeout_sec=50
-            timeout_after=datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
+            timeout_sec = 50
+            timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
             # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
             while "Challenge Validation" in driver.title:
                 print('.', end='')
@@ -205,7 +204,7 @@ def process(code, postal_code, url, vaccine_code):
         screenshot(driver, f'error-{ts_string}-screenshot')
         write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
 
-        files=glob.glob(f'out/error-{ts_string}*')
+        files = glob.glob(f'out/error-{ts_string}*')
         send_mail('Corona Impf-o-mat :: Error',
                   f"""There were errors while interacting with the URL
 
@@ -264,21 +263,25 @@ If you can read this text, everything is just fine!""",
 
     print(f'Using URL: {web_url}')
 
+    success = False
     while True:
         remove_screenshot_files()
-        success = process(args.code, args.postal_code, args.url, args.vaccine_code)
-
-        if success:
-            send_mail(
-                f"""Corona Impf-o-mat :: Notification',
+        try:
+            success = process(args.code, args.postal_code, args.url, args.vaccine_code)
+            if success:
+                send_mail(
+                    f"""Corona Impf-o-mat :: Notification',
 Corona vaccines are currently available, see the attached screenshots.
 
 To book an appointment, use this URL:'
 
 <{web_url}>
 """,
-                None,
-                glob.glob('out/*.*'))
+                    None,
+                    glob.glob('out/*.*'))
+
+        except Exception as e:
+            print(f'processing error: {e}')
 
         if args.retry == 0:
             break
