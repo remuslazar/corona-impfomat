@@ -18,6 +18,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 
+from selenium.webdriver.chrome.webdriver import WebDriver
+
 screenshot_index = 1
 
 # SES and mail configuration
@@ -133,6 +135,18 @@ def write_file(filename, text):
     file.close()
 
 
+def get_process_script():
+    file = open(f'process.js')
+    content = file.read()
+    file.close()
+    return content
+
+
+def fetch_json_data(driver: WebDriver):
+    output = driver.execute_async_script(get_process_script())
+    write_file('ersttermin.json', output)
+
+
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
@@ -169,6 +183,8 @@ def process(code, postal_code, url, vaccine_code):
         # now we should see a page with a "termin suchen" button
         driver.find_element_by_class_name("kv-btn").click()
         time.sleep(2)
+
+        fetch_json_data(driver)
 
         # dismiss the cookie banner, else we will not be able to click on stuff behind it
         if "Cookie Hinweis" in driver.page_source:
