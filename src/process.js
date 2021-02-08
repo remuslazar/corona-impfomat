@@ -1,7 +1,8 @@
 // noinspection JSUnresolvedVariable
 (function(arguments, window) {
 
-  const done = arguments[0];
+  const done = arguments[arguments.length - 1];
+  const action = arguments[0];
 
   // basically just a simple wrapper around XMLHttpRequest
   async function get_url(url) {
@@ -32,17 +33,28 @@
     });
   }
 
-  async function process() {
-    // path being something like
-    // /terminservice/suche/VCGM-F87Z-Q7VZ/75175/L920
-    let code, postal_code, vaccine_code;
+  async function process(action) {
 
-    [,,,code,postal_code,vaccine_code] = window.location.pathname.split('/');
+    let url;
 
-    return await get_url(`/rest/suche/ersttermin?allOf=&someOf=${vaccine_code}&plz=${postal_code}&daytime=11111111111111&radius=10`);
+    switch (action) {
+      case 'get_ersttermin_json':
+        // path being something like
+        // /terminservice/suche/VCGM-F87Z-Q7VZ/75175/L920
+        let code, postal_code, vaccine_code;
+
+        [, , , code, postal_code, vaccine_code] = window.location.pathname.split('/');
+        url = `/rest/suche/ersttermin?allOf=&someOf=${vaccine_code}&plz=${postal_code}&daytime=11111111111111&radius=10`;
+        break;
+
+      default:
+        throw new Error(`unknown action: ${action}`);
+    }
+
+    return await get_url(url);
   }
 
-  process().then(
+  process(action).then(
       result => done(result),
       error => done(error)
   );

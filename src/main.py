@@ -143,7 +143,7 @@ def get_process_script():
 
 
 def fetch_json_data(driver: WebDriver):
-    output = driver.execute_async_script(get_process_script())
+    output = driver.execute_async_script(get_process_script(), 'get_ersttermin_json')
     write_file('ersttermin.json', output)
 
 
