@@ -47,6 +47,14 @@
         url = `/rest/suche/ersttermin?allOf=&someOf=${vaccine_code}&plz=${postal_code}&daytime=11111111111111&radius=10`;
         break;
 
+      case 'get_vaccination_list_json':
+        url = `/assets/static/its/vaccination-list.json`;
+        break;
+
+      case 'get_version':
+        url = `/rest/version`;
+        break;
+
       default:
         throw new Error(`unknown action: ${action}`);
     }

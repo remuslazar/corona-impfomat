@@ -146,6 +146,12 @@ def fetch_json_data(driver: WebDriver):
     output = driver.execute_async_script(get_process_script(), 'get_ersttermin_json')
     write_file('ersttermin.json', output)
 
+    output = driver.execute_async_script(get_process_script(), 'get_vaccination_list_json')
+    write_file('vaccination-list.json', output)
+
+    output = driver.execute_async_script(get_process_script(), 'get_version')
+    write_file('version.txt', output)
+
 
 def process(code, postal_code, url, vaccine_code):
     chrome_options = set_chrome_options()
