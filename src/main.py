@@ -35,6 +35,18 @@ class Error(Exception):
     pass
 
 
+class Address:
+    def __init__(self, args):
+        self.salutation = args.salutation
+        self.name = args.name
+        self.surname = args.surname
+        self.street = args.street
+        self.street_no = args.street_no
+        self.postal_code = args.postal_code
+        self.city = args.city
+        self.phone = args.phone
+        self.email = args.email
+
 def create_multipart_message(
         sender: str, recipients: list, title: str, text: str = None, html: str = None, attachments: list = None) \
         -> MIMEMultipart:
@@ -153,7 +165,7 @@ def fetch_json_data(driver: WebDriver):
     write_file('version.txt', output)
 
 
-def process(code, postal_code, url, vaccine_code):
+def process(code, postal_code, url, vaccine_code, address: Address):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -211,8 +223,27 @@ def process(code, postal_code, url, vaccine_code):
             screenshot(driver)
             driver.find_element_by_class_name('ets-slot-button').click()
             time.sleep(3)
-            print(f'Success: at least one appointment found')
-            write_file('exit-page.html', driver.page_source)
+            print(f'Success: at least one appointment found, I will try too book the first one..')
+            write_file('form.html', driver.page_source)
+
+            driver.find_element_by_xpath(f"//input[@name='salutation'][@value='{address.salutation}']").click()
+            driver.find_element_by_xpath(f"//input[@name='firstname']").send_keys(address.surname)
+            driver.find_element_by_xpath(f"//input[@name='lastname']").send_keys(address.name)
+            driver.find_element_by_xpath(f"//input[@name='plz']").send_keys(address.postal_code)
+            driver.find_element_by_xpath(f"//input[@name='city']").send_keys(address.city)
+            driver.find_element_by_xpath(f"//input[@formcontrolname='street']").send_keys(address.street)
+            driver.find_element_by_xpath(f"//input[@formcontrolname='housenumber']").send_keys(address.street_no)
+            driver.find_element_by_xpath(f"//input[@name='name='phone']").send_keys(address.phone)
+            driver.find_element_by_xpath(f"//input[@name='notificationReceiver']").send_keys(address.email)
+            screenshot(driver)
+
+            time.sleep(1)
+            driver.find_element_by_xpath(f"//button[@type='submit'").click()
+
+            time.sleep(3)
+            write_file('after-submit.html', driver.page_source)
+            screenshot(driver)
+
             success = True
 
         screenshot(driver)
@@ -265,13 +296,34 @@ def main():
                         default="L920")
     parser.add_argument('--retry', help="Retry time in seconds, 0 to disable", type=int, default=0)
     parser.add_argument('--test-mail', help="Just send a mail for testing", action='store_true')
+    parser.add_argument('--surname', help="Surname")
+    parser.add_argument('--name', help="Family Name")
+    parser.add_argument('--city', help="City")
+    parser.add_argument('--email', help="E-Mail Address")
+    parser.add_argument('--street', help="Street")
+    parser.add_argument('--street-no', help="Street Number")
+    parser.add_argument('--phone', help="Phone Number")
+    parser.add_argument('--salutation', help="Salutation (Herr|Frau|Divers|Kind)", default="Herr")
 
     args = parser.parse_args()
+
+    # extract the address info from args
+    address = Address(args=args)
 
     if args.test_mail:
         print(f'Will send an email to {SENDER}.')
         send_mail('Test Mail',
                   f"""This is just a test.
+                  
+Address Data:
+---
+
+Salutation: {address.salutation}
+Name, Surname: {address.name}, {address.surname}
+Street, No: {address.street} {address.street_no}
+Postal Code, City: {address.postal_code} {address.city}
+E-Mail: {address.email}
+Phone: {address.phone}
                   
 If you can read this text, everything is just fine!""",
                   None,
@@ -289,7 +341,7 @@ If you can read this text, everything is just fine!""",
     while True:
         remove_screenshot_files()
         try:
-            success = process(args.code, args.postal_code, args.url, args.vaccine_code)
+            success = process(args.code, args.postal_code, args.url, args.vaccine_code, address)
             if success:
                 send_mail(
                     f'Corona Impf-o-mat :: Notification',

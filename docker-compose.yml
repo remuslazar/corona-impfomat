@@ -6,7 +6,19 @@ services:
     volumes:
       - ./out:/app/out
       - ./src:/app/src
-    command: --retry 60 --postal-code ${CORONA_POSTAL_CODE} --code ${CORONA_CODE}
+    command: >-
+      --retry 60
+      --postal-code ${CORONA_POSTAL_CODE}
+      --code ${CORONA_CODE}
+      --email ${CORONA_EMAIL}
+      --salutation ${CORONA_SALUTATION}
+      --street ${CORONA_STREET}
+      --street-no ${CORONA_STREET_NO}
+      --surname ${CORONA_SURNAME}
+      --name ${CORONA_NAME}
+      --city ${CORONA_CITY}
+      --phone ${CORONA_PHONE}
+
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
