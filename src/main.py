@@ -47,6 +47,7 @@ class Address:
         self.phone = args.phone
         self.email = args.email
 
+
 def create_multipart_message(
         sender: str, recipients: list, title: str, text: str = None, html: str = None, attachments: list = None) \
         -> MIMEMultipart:
