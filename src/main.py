@@ -143,6 +143,9 @@ def get_url(code, postal_code, url, vaccine_code):
 
 
 def write_file(filename, text):
+    if isinstance(text, list):
+        text = "\n".join(text)
+
     file = open(f'{OUT_PATH}/{filename}', 'w')
     file.write(text)
     file.close()
