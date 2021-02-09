@@ -254,9 +254,11 @@ def process(code, postal_code, url, vaccine_code, address: Address):
 
     except Error as error:
         print(error)
+        write_file('console.log', driver.get_log('browser'))
 
     except Exception as e:
         ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
+        write_file(f'error-{ts_string}-console.log', driver.get_log('browser'))
         print(f"""got an error while trying to parse the page.
 Will save the screenshot and page source to error-{ts_string}-*""")
         print(e)
