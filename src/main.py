@@ -200,8 +200,11 @@ def process(code, postal_code, url, vaccine_code, address: Address):
             print(' ', end='')
 
         # now we should see a page with a "termin suchen" button
-        driver.find_element_by_class_name("kv-btn").click()
-        time.sleep(2)
+        try:
+            driver.find_element_by_class_name("kv-btn").click()
+            time.sleep(2)
+        except Exception as e:
+            raise Error(f'Could not click on the .kv-btn button ({e})')
 
         fetch_json_data(driver)
 
@@ -248,6 +251,9 @@ def process(code, postal_code, url, vaccine_code, address: Address):
 
         screenshot(driver)
         return success
+
+    except Error as error:
+        print(error)
 
     except Exception as e:
         ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
