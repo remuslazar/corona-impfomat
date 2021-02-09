@@ -251,7 +251,7 @@ def process(code, postal_code, url, vaccine_code, address: Address):
 
     except Exception as e:
         ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
-        print("""got an error while trying to parse the page.
+        print(f"""got an error while trying to parse the page.
 Will save the screenshot and page source to error-{ts_string}-*""")
         print(e)
         screenshot(driver, f'error-{ts_string}-screenshot')
