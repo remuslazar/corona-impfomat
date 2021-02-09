@@ -243,7 +243,6 @@ def process(code, postal_code, url, vaccine_code, address: Address):
 
             time.sleep(3)
             write_file('after-submit.html', driver.page_source)
-            screenshot(driver)
 
             success = True
 
@@ -360,6 +359,10 @@ To book an appointment, use this URL:
             print(f'processing error: {e}')
 
         if args.retry == 0:
+            break
+
+        if success:
+            print(f'Exit on purpose after the first successful attempt')
             break
 
         time.sleep(args.retry)
