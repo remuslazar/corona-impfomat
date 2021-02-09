@@ -7,7 +7,7 @@ services:
       - ./out:/app/out
       - ./src:/app/src
     command: >-
-      --retry 20
+      --retry 60
       --postal-code ${CORONA_POSTAL_CODE}
       --code ${CORONA_CODE}
       --email ${CORONA_EMAIL}
