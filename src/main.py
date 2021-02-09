@@ -292,12 +292,13 @@ If you can read this text, everything is just fine!""",
             success = process(args.code, args.postal_code, args.url, args.vaccine_code)
             if success:
                 send_mail(
-                    f"""Corona Impf-o-mat :: Notification',
-Corona vaccines are currently available, see the attached screenshots.
+                    f'Corona Impf-o-mat :: Notification',
+                    f"""Corona vaccines are currently available, see the attached screenshots.
 
-To book an appointment, use this URL:'
+To book an appointment, use this URL:
 
 <{web_url}>
+
 """,
                     None,
                     glob.glob(f'{OUT_PATH}/*.*'))
