@@ -19,6 +19,7 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 
 from selenium.webdriver.chrome.webdriver import WebDriver
+import json
 
 screenshot_index = 1
 
@@ -143,9 +144,6 @@ def get_url(code, postal_code, url, vaccine_code):
 
 
 def write_file(filename, text):
-    if isinstance(text, list):
-        text = "\n".join(text)
-
     file = open(f'{OUT_PATH}/{filename}', 'w')
     file.write(text)
     file.close()
@@ -257,11 +255,12 @@ def process(code, postal_code, url, vaccine_code, address: Address):
 
     except Error as error:
         print(error)
-        write_file('console.log', driver.get_log('browser'))
+        write_file('console.log', json.dumps(driver.get_log('browser')))
 
     except Exception as e:
+        print(e)
         ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
-        write_file(f'error-{ts_string}-console.log', driver.get_log('browser'))
+        write_file(f'error-{ts_string}-console.log', json.dumps(driver.get_log('browser')))
         print(f"""got an error while trying to parse the page.
 Will save the screenshot and page source to error-{ts_string}-*""")
         print(e)
