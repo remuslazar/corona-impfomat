@@ -248,7 +248,7 @@ def process(code, postal_code, url, vaccine_code, address: Address):
                 screenshot(driver)
 
                 time.sleep(1)
-                driver.find_element_by_xpath(f"//button[@type='submit'").click()
+                driver.find_element_by_xpath(f"//button[@type='submit']").click()
 
                 time.sleep(3)
                 write_file('after-submit.html', driver.page_source)
@@ -259,19 +259,46 @@ def process(code, postal_code, url, vaccine_code, address: Address):
             return success
 
         else:
+            # dismiss the cookie banner, else we will not be able to click on stuff behind it
+            if "Cookie Hinweis" in driver.page_source:
+                driver.find_element_by_class_name("cookies-info-close").click()
+                time.sleep(3)
+            screenshot(driver)
+
             # now we should see a page with a "Wurde Ihr Anspruch auf .." text
             if "Wurde Ihr Anspruch" not in driver.page_source:
                 raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
 
-            driver.find_element_by_xpath('//div[@class="ets-radio-wrapper"]/label[2]/span').click()
-            screenshot(driver)
-
+            # click on "Nein"
+            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > label:nth-child(2) > span').click()
+            # wait some time
             time.sleep(5)
             screenshot(driver)
+
+            if "Folgende Personen" not in driver.page_source:
+                raise Error(f'was expecting to see "Folgende Personen" but this string was not found')
 
             if "Es wurden keine freien" in driver.page_source:
                 print(f'no appointments available')
 
+                return False
+
+            if "Gehören Sie" not in driver.page_source:
+                raise Error(f'was expecting to see "Gehören Sie..." but this string was not found')
+
+            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > div.ets-login-form-section.in > div > app-corona-vaccination-no > form > div.form-group.d-flex.justify-content-center > div > div > label:nth-child(1) > span').click()
+
+            age="71"
+            driver.find_element_by_xpath(f"//input[@name='age']").send_keys(age)
+            time.sleep(2)
+            screenshot(driver)
+
+            driver.find_element_by_css_selector('app-corona-vaccination-no > form > div:nth-child(4) > button').click()
+            time.sleep(1)
+            screenshot(driver)
+
+            if "Es wurden keine freien Termine" in driver.page_source:
+                print(f'no appointments available')
                 return False
 
             write_file('page.html', driver.page_source)
@@ -293,18 +320,19 @@ Will save the screenshot and page source to error-{ts_string}-*""")
         write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
 
         files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
-        send_mail('Corona Impf-o-mat :: Error',
-                  f"""There were errors while interacting with the URL
+        if RECIPIENT:
+            send_mail('Corona Impf-o-mat :: Error',
+                      f"""There were errors while interacting with the URL
 
 {web_url}
 
 {e}
 """,
-                  None,
-                  files)
+                      None,
+                      files)
 
-        for file in files:
-            os.remove(file)
+            for file in files:
+                os.remove(file)
 
         return False
 
