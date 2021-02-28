@@ -275,13 +275,12 @@ def process(code, postal_code, url, vaccine_code, address: Address):
             time.sleep(5)
             screenshot(driver)
 
+            if "Es wurden keine freien" in driver.page_source:
+                print(f'no appointments available (1)')
+                return False
+
             if "Folgende Personen" not in driver.page_source:
                 raise Error(f'was expecting to see "Folgende Personen" but this string was not found')
-
-            if "Es wurden keine freien" in driver.page_source:
-                print(f'no appointments available')
-
-                return False
 
             if "Gehören Sie" not in driver.page_source:
                 raise Error(f'was expecting to see "Gehören Sie..." but this string was not found')
@@ -298,7 +297,7 @@ def process(code, postal_code, url, vaccine_code, address: Address):
             screenshot(driver)
 
             if "Es wurden keine freien Termine" in driver.page_source:
-                print(f'no appointments available')
+                print(f'no appointments available (2)')
                 return False
 
             write_file('page.html', driver.page_source)
