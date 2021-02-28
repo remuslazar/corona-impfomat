@@ -12,7 +12,6 @@ import glob
 import boto3
 # noinspection PyPackageRequirements
 import dateutil.tz
-import json
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -140,7 +139,10 @@ def get_timestamp():
 
 
 def get_url(code, postal_code, url, vaccine_code):
-    return f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+    if code:
+        return f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+    else:
+        return f'{url}impftermine/service?plz={postal_code}'
 
 
 def write_file(filename, text):
@@ -186,72 +188,93 @@ def process(code, postal_code, url, vaccine_code, address: Address):
             print('site is currently in maintenance mode')
             return False
 
-        # check if the challenge validation page is the current one (this should be the case, anyway)
-        if "Challenge Validation" in driver.title:
-            timeout_sec = 60
-            timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
-            # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
-            while "Challenge Validation" in driver.title:
-                print('.', end='')
+        if code:
+            # check if the challenge validation page is the current one (this should be the case, anyway)
+            if "Challenge Validation" in driver.title:
+                timeout_sec = 60
+                timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
+                # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
+                while "Challenge Validation" in driver.title:
+                    print('.', end='')
+                    time.sleep(3)
+                    if datetime.datetime.now() > timeout_after:
+                        raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec}s)')
+
+                screenshot(driver)
+                print(' ', end='')
+
+            # now we should see a page with a "termin suchen" button
+            try:
+                driver.find_element_by_class_name("kv-btn").click()
+                time.sleep(2)
+            except Exception as e:
+                raise Error(f'Could not click on the .kv-btn button ({e})')
+
+            fetch_json_data(driver)
+
+            # dismiss the cookie banner, else we will not be able to click on stuff behind it
+            if "Cookie Hinweis" in driver.page_source:
+                driver.find_element_by_class_name("cookies-info-close").click()
+                time.sleep(1)
+
+            success = False
+
+            if "leider keine Termine" in driver.page_source:
+                text = driver.find_element_by_class_name("ets-search-no-results").text
+                write_file('no-appointments-text.txt', text)
+                print(f'no appointments available')
+
+            else:
+                if "Gefundene Termine" not in driver.page_source:
+                    raise Error(f'was expecting to see "Gefundene Termine" but this string was not found')
+
+                screenshot(driver)
+                driver.find_element_by_class_name('ets-slot-button').click()
                 time.sleep(3)
-                if datetime.datetime.now() > timeout_after:
-                    raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec}s)')
+                print(f'Success: at least one appointment found, I will try too book the first one..')
+                write_file('form.html', driver.page_source)
+
+                driver.find_element_by_xpath(f"//input[@name='salutation'][@value='{address.salutation}']").click()
+                driver.find_element_by_xpath(f"//input[@name='firstname']").send_keys(address.surname)
+                driver.find_element_by_xpath(f"//input[@name='lastname']").send_keys(address.name)
+                driver.find_element_by_xpath(f"//input[@name='plz']").send_keys(address.postal_code)
+                driver.find_element_by_xpath(f"//input[@name='city']").send_keys(address.city)
+                driver.find_element_by_xpath(f"//input[@formcontrolname='street']").send_keys(address.street)
+                driver.find_element_by_xpath(f"//input[@formcontrolname='housenumber']").send_keys(address.street_no)
+                driver.find_element_by_xpath(f"//input[@name='name='phone']").send_keys(address.phone)
+                driver.find_element_by_xpath(f"//input[@name='notificationReceiver']").send_keys(address.email)
+                screenshot(driver)
+
+                time.sleep(1)
+                driver.find_element_by_xpath(f"//button[@type='submit'").click()
+
+                time.sleep(3)
+                write_file('after-submit.html', driver.page_source)
+
+                success = True
 
             screenshot(driver)
-            print(' ', end='')
-
-        # now we should see a page with a "termin suchen" button
-        try:
-            driver.find_element_by_class_name("kv-btn").click()
-            time.sleep(2)
-        except Exception as e:
-            raise Error(f'Could not click on the .kv-btn button ({e})')
-
-        fetch_json_data(driver)
-
-        # dismiss the cookie banner, else we will not be able to click on stuff behind it
-        if "Cookie Hinweis" in driver.page_source:
-            driver.find_element_by_class_name("cookies-info-close").click()
-            time.sleep(1)
-
-        success = False
-
-        if "leider keine Termine" in driver.page_source:
-            text = driver.find_element_by_class_name("ets-search-no-results").text
-            write_file('no-appointments-text.txt', text)
-            print(f'no appointments available')
+            return success
 
         else:
-            if "Gefundene Termine" not in driver.page_source:
-                raise Error(f'was expecting to see "Gefundene Termine" but this string was not found')
+            # now we should see a page with a "Wurde Ihr Anspruch auf .." text
+            if "Wurde Ihr Anspruch" not in driver.page_source:
+                raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
 
-            screenshot(driver)
-            driver.find_element_by_class_name('ets-slot-button').click()
-            time.sleep(3)
-            print(f'Success: at least one appointment found, I will try too book the first one..')
-            write_file('form.html', driver.page_source)
-
-            driver.find_element_by_xpath(f"//input[@name='salutation'][@value='{address.salutation}']").click()
-            driver.find_element_by_xpath(f"//input[@name='firstname']").send_keys(address.surname)
-            driver.find_element_by_xpath(f"//input[@name='lastname']").send_keys(address.name)
-            driver.find_element_by_xpath(f"//input[@name='plz']").send_keys(address.postal_code)
-            driver.find_element_by_xpath(f"//input[@name='city']").send_keys(address.city)
-            driver.find_element_by_xpath(f"//input[@formcontrolname='street']").send_keys(address.street)
-            driver.find_element_by_xpath(f"//input[@formcontrolname='housenumber']").send_keys(address.street_no)
-            driver.find_element_by_xpath(f"//input[@name='name='phone']").send_keys(address.phone)
-            driver.find_element_by_xpath(f"//input[@name='notificationReceiver']").send_keys(address.email)
+            driver.find_element_by_xpath('//div[@class="ets-radio-wrapper"]/label[2]/span').click()
             screenshot(driver)
 
-            time.sleep(1)
-            driver.find_element_by_xpath(f"//button[@type='submit'").click()
+            time.sleep(5)
+            screenshot(driver)
 
-            time.sleep(3)
-            write_file('after-submit.html', driver.page_source)
+            if "Es wurden keine freien" in driver.page_source:
+                print(f'no appointments available')
 
-            success = True
+                return False
 
-        screenshot(driver)
-        return success
+            write_file('page.html', driver.page_source)
+            print(f'Success: saved page source to page.html..')
+            return True
 
     except Error as error:
         print(error)
@@ -299,7 +322,7 @@ def remove_screenshot_files():
 
 def main():
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
-    parser.add_argument('--code', help="Corona Vermittlungscode", required=True)
+    parser.add_argument('--code', help="Corona Vermittlungscode", required=False)
     parser.add_argument('--postal-code', help="German Postal Code", required=True)
     parser.add_argument('--url', help="Service-URL", default="https://005-iz.impfterminservice.de/")
     parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)",

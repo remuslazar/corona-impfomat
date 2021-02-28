@@ -9,15 +9,15 @@ services:
     command: >-
       --retry ${RETRY_SEC}
       --postal-code ${CORONA_POSTAL_CODE}
-      --code ${CORONA_CODE}
-      --email ${CORONA_EMAIL}
-      --salutation ${CORONA_SALUTATION}
-      --street ${CORONA_STREET}
-      --street-no ${CORONA_STREET_NO}
-      --surname ${CORONA_SURNAME}
-      --name ${CORONA_NAME}
-      --city ${CORONA_CITY}
-      --phone ${CORONA_PHONE}
+      --code "${CORONA_CODE}"
+      --email "${CORONA_EMAIL}"
+      --salutation "${CORONA_SALUTATION}"
+      --street "${CORONA_STREET}"
+      --street-no "${CORONA_STREET_NO}"
+      --surname "${CORONA_SURNAME}"
+      --name "${CORONA_NAME}"
+      --city "${CORONA_CITY}"
+      --phone "${CORONA_PHONE}"
 
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
