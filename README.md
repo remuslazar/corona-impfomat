@@ -11,10 +11,12 @@ Chrome browser to perform the tasks.
 
 ```bash
 cp .env.example .env
+cp config-example.yml config.yml
 vi .env
 ```
 
-.. configure valid AWS Credentials here and configure valid email addresses.
+Edit `config.yml` and `.env`.
+
 
 ## Run App in Docker
 

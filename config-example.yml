@@ -1,0 +1,15 @@
+parties:
+  - recipient: <valid e-mail address for the notifications>
+    url: https://005-iz.impfterminservice.de/
+    vaccine_code: L920
+    code:
+    address:
+      postal_code:
+      salutation:
+      street:
+      street_no:
+      surname:
+      name:
+      city:
+      phone:
+      email:

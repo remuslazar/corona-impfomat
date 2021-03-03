@@ -12,6 +12,7 @@ import glob
 import boto3
 # noinspection PyPackageRequirements
 import dateutil.tz
+import yaml
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -33,19 +34,6 @@ OUT_PATH = "../out"
 class Error(Exception):
     """Base class for exceptions in this module."""
     pass
-
-
-class Address:
-    def __init__(self, args):
-        self.salutation = args.salutation
-        self.name = args.name
-        self.surname = args.surname
-        self.street = args.street
-        self.street_no = args.street_no
-        self.postal_code = args.postal_code
-        self.city = args.city
-        self.phone = args.phone
-        self.email = args.email
 
 
 def create_multipart_message(
@@ -142,7 +130,7 @@ def get_timestamp():
 
 def get_url(code, postal_code, url, vaccine_code):
     if code:
-        return f'{url}terminservice/suche/{code}/{postal_code}/{vaccine_code}'
+        return url.format(code=code, postal_code=postal_code, vaccine_code=vaccine_code)
     else:
         return f'{url}impftermine/service?plz={postal_code}'
 
@@ -171,7 +159,7 @@ def fetch_json_data(driver: WebDriver):
     write_file('version.txt', output)
 
 
-def process(code, postal_code, url, vaccine_code, address: Address):
+def process(code, postal_code, url, vaccine_code, address):
     chrome_options = set_chrome_options()
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -181,6 +169,8 @@ def process(code, postal_code, url, vaccine_code, address: Address):
 
     try:
         driver.get(web_url)
+
+        time.sleep(1)
 
         # we will take screenshots from time to time, this being the initial one
         screenshot(driver)
@@ -205,14 +195,42 @@ def process(code, postal_code, url, vaccine_code, address: Address):
                 screenshot(driver)
                 print(' ', end='')
 
-            # now we should see a page with a "termin suchen" button
-            try:
-                driver.find_element_by_class_name("kv-btn").click()
+            # dismiss the cookie banner, else we will not be able to click on stuff behind it
+            if "Cookie Hinweis" in driver.page_source:
+                driver.find_element_by_class_name("cookies-info-close").click()
                 time.sleep(2)
-            except Exception as e:
-                raise Error(f'Could not click on the .kv-btn button ({e})')
+                screenshot(driver)
 
-            fetch_json_data(driver)
+            driver.find_element_by_xpath("//label[@class='ets-radio-control']").click()
+            time.sleep(1)
+            screenshot(driver)
+
+            codes = code.split('-')
+            driver.find_element_by_xpath(f"//input[@name='ets-input-code-0']").send_keys(codes[0])
+            driver.find_element_by_xpath(f"//input[@name='ets-input-code-1']").send_keys(codes[1])
+            driver.find_element_by_xpath(f"//input[@name='ets-input-code-2']").send_keys(codes[2])
+
+            time.sleep(2)
+            screenshot(driver)
+
+            driver.find_element_by_css_selector('app-corona-vaccination-yes > form > div:nth-child(3) > button').click()
+            time.sleep(1)
+            screenshot(driver)
+
+            # fetch_json_data(driver)
+
+            # now we do re-fetch the url for weird reasons..
+            driver.get(web_url)
+            time.sleep(3)
+            screenshot(driver)
+
+            # now we should see a page with a "Onlinebuchung für Ihre Corona-Schutzimpfung" text
+            if "Onlinebuchung" not in driver.page_source:
+                raise Error(f'was expecting to see "Onlinebuchung" but this string was not found')
+
+            driver.find_element_by_xpath("//button[@data-target='#itsSearchAppointmentsModal']").click()
+            time.sleep(3)
+            screenshot(driver)
 
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
             if "Cookie Hinweis" in driver.page_source:
@@ -236,15 +254,16 @@ def process(code, postal_code, url, vaccine_code, address: Address):
                 print(f'Success: at least one appointment found, I will try too book the first one..')
                 write_file('form.html', driver.page_source)
 
-                driver.find_element_by_xpath(f"//input[@name='salutation'][@value='{address.salutation}']").click()
-                driver.find_element_by_xpath(f"//input[@name='firstname']").send_keys(address.surname)
-                driver.find_element_by_xpath(f"//input[@name='lastname']").send_keys(address.name)
-                driver.find_element_by_xpath(f"//input[@name='plz']").send_keys(address.postal_code)
-                driver.find_element_by_xpath(f"//input[@name='city']").send_keys(address.city)
-                driver.find_element_by_xpath(f"//input[@formcontrolname='street']").send_keys(address.street)
-                driver.find_element_by_xpath(f"//input[@formcontrolname='housenumber']").send_keys(address.street_no)
-                driver.find_element_by_xpath(f"//input[@name='name='phone']").send_keys(address.phone)
-                driver.find_element_by_xpath(f"//input[@name='notificationReceiver']").send_keys(address.email)
+                salutation = address['salutation']
+                driver.find_element_by_xpath(f"//input[@name='salutation'][@value='{salutation}'").click()
+                driver.find_element_by_xpath(f"//input[@name='firstname']").send_keys(address['surname'])
+                driver.find_element_by_xpath(f"//input[@name='lastname']").send_keys(address['name'])
+                driver.find_element_by_xpath(f"//input[@name='plz']").send_keys(address['postal_code'])
+                driver.find_element_by_xpath(f"//input[@name='city']").send_keys(address['city'])
+                driver.find_element_by_xpath(f"//input[@formcontrolname='street']").send_keys(address['street'])
+                driver.find_element_by_xpath(f"//input[@formcontrolname='housenumber']").send_keys(address['street_no'])
+                driver.find_element_by_xpath(f"//input[@name='name='phone']").send_keys(address['phone'])
+                driver.find_element_by_xpath(f"//input[@name='notificationReceiver']").send_keys(address['email'])
                 screenshot(driver)
 
                 time.sleep(1)
@@ -349,87 +368,71 @@ def remove_screenshot_files():
     screenshot_index = 1
 
 
+def get_config(config_file):
+    with open(config_file) as file:
+        data = yaml.full_load(file)
+        return data
+
+
 def main():
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
-    parser.add_argument('--code', help="Corona Vermittlungscode", required=False)
-    parser.add_argument('--postal-code', help="German Postal Code", required=True)
-    parser.add_argument('--url', help="Service-URL", default="https://005-iz.impfterminservice.de/")
-    parser.add_argument('--vaccine-code', help="Corona Vaccine Code (L920 for BioNTech, L921 for Moderna)",
-                        default="L920")
+    parser.add_argument('--config', help="Path to the configuration file. See documentation for details.", default="config.yml")
     parser.add_argument('--retry', help="Retry time in seconds, 0 to disable", type=int, default=0)
-    parser.add_argument('--test-mail', help="Just send a mail for testing", action='store_true')
-    parser.add_argument('--surname', help="Surname")
-    parser.add_argument('--name', help="Family Name")
-    parser.add_argument('--city', help="City")
-    parser.add_argument('--email', help="E-Mail Address")
-    parser.add_argument('--street', help="Street")
-    parser.add_argument('--street-no', help="Street Number")
-    parser.add_argument('--phone', help="Phone Number")
-    parser.add_argument('--salutation', help="Salutation (Herr|Frau|Divers|Kind)", default="Herr")
+    parser.add_argument('--test-mail', help="Just send a mail for testing")
 
     args = parser.parse_args()
 
-    # extract the address info from args
-    address = Address(args=args)
-
     if args.test_mail:
-        print(f'Will send an email to {SENDER}.')
+        recipient = args.test_mail
+        print(f'Will send an email to {recipient}.')
         send_mail('Test Mail',
                   f"""This is just a test.
-                  
-Address Data:
----
-
-Salutation: {address.salutation}
-Name, Surname: {address.name}, {address.surname}
-Street, No: {address.street} {address.street_no}
-Postal Code, City: {address.postal_code} {address.city}
-E-Mail: {address.email}
-Phone: {address.phone}
-                  
+                                    
 If you can read this text, everything is just fine!""",
                   None,
                   None)
         sys.exit()
 
-    web_url = get_url(code=args.code,
-                      postal_code=args.postal_code,
-                      url=args.url,
-                      vaccine_code=args.vaccine_code)
+    config_file = os.path.join(os.path.dirname(__file__),  '..', args.config)
+    config = get_config(config_file)
 
-    print(f'Using URL: {web_url}')
-
-    success = False
     while True:
-        remove_screenshot_files()
-        try:
-            success = process(args.code, args.postal_code, args.url, args.vaccine_code, address)
-            if success:
-                send_mail(
-                    f'Corona Impf-o-mat :: Notification',
-                    f"""Corona vaccines are currently available, see the attached screenshots.
+        for item, doc in config.items():
+            if item == 'parties':
+                for party in doc:
+                    web_url = get_url(code=party['code'],
+                                      postal_code=party['address']['postal_code'],
+                                      url=party['url'],
+                                      vaccine_code=party['vaccine_code'])
 
-To book an appointment, use this URL:
+                    print(f'Using URL: {web_url}')
+                    remove_screenshot_files()
+                    try:
+                        success = process(party['code'], party['address']['postal_code'], party['url'], party['vaccine_code'], party['address'])
+                        if success:
+                            send_mail(
+                                f'Corona Impf-o-mat :: Notification',
+                                f"""Corona vaccines are currently available, see the attached screenshots.
+            
+            To book an appointment, use this URL:
+            
+            <{web_url}>
+            
+            """,
+                                None,
+                                glob.glob(f'{OUT_PATH}/*.*'))
 
-<{web_url}>
+                    except Exception as e:
+                        print(f'processing error: {e}')
 
-""",
-                    None,
-                    glob.glob(f'{OUT_PATH}/*.*'))
+                    if args.retry == 0:
+                        break
 
-        except Exception as e:
-            print(f'processing error: {e}')
+                    if success:
+                        print(f'Exit on purpose after the first successful attempt')
+                        break
 
-        if args.retry == 0:
-            break
-
-        if success:
-            print(f'Exit on purpose after the first successful attempt')
-            break
-
-        time.sleep(args.retry)
-
-    sys.exit(0 if success else 10)
+                    time.sleep(args.retry)
 
 
 if __name__ == '__main__':
