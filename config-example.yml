@@ -1,5 +1,6 @@
 parties:
   - name: A Name
+    age: 18
     recipient: <valid e-mail address for the notifications>
     url: https://005-iz.impfterminservice.de/
     vaccine_code: L920

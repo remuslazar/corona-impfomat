@@ -182,7 +182,7 @@ def check_429():
         raise Error(f'got 429 error')
 
 
-def process(name, code, postal_code, url, recipient):
+def process(name, code, postal_code, url, recipient, age):
     global browser
 
     # chrome_options = set_chrome_options()
@@ -295,8 +295,8 @@ def process(name, code, postal_code, url, recipient):
                                                  'form > div.form-group.d-flex.justify-content-center > div > div > '
                                                  'label:nth-child(1) > span').click()
 
-            age = "71"
-            browser.find_element_by_xpath(f"//input[@name='age']").send_keys(age)
+            age_str = f'{age}'
+            browser.find_element_by_xpath(f"//input[@name='age']").send_keys(age_str)
             time.sleep(2)
             screenshot(browser)
 
@@ -417,7 +417,7 @@ If you can read this text, everything is just fine!""",
                     remove_screenshot_files()
                     try:
                         success = process(party['name'], party['code'], party['address']['postal_code'], party['url'],
-                                          party['recipient'])
+                                          party['recipient'], party['age'])
                         if success:
                             send_mail(
                                 f'Corona Impf-o-mat :: Notification',
@@ -442,7 +442,10 @@ If you can read this text, everything is just fine!""",
                         time.sleep(10 * 60)
                         break
 
-                    time.sleep(args.retry)
+                    # wait a short while between each party
+                    time.sleep(10)
+
+                time.sleep(args.retry)
 
 
 if __name__ == '__main__':
