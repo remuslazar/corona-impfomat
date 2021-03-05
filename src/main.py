@@ -416,11 +416,12 @@ If you can read this text, everything is just fine!""",
 
                     remove_screenshot_files()
                     try:
+                        recipient = party['recipient']
                         success = process(party['name'], party['code'], party['address']['postal_code'], party['url'],
-                                          party['recipient'], party['age'])
+                                          recipient, party['age'])
                         if success:
                             send_mail(
-                                party['recipient'],
+                                recipient,
                                 f'Corona Impf-o-mat :: Notification',
                                 f"""Corona vaccines are currently available, see the attached screenshots.
             
@@ -431,6 +432,7 @@ If you can read this text, everything is just fine!""",
             """,
                                 None,
                                 glob.glob(f'{OUT_PATH}/*.*'))
+                            print(f'Email Notification was sent to {recipient}.')
 
                     except Exception as e:
                         print(f'processing error: {e}')
