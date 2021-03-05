@@ -106,8 +106,8 @@ def set_chrome_options():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
-                 "Version/14.0.3 Safari/605.1.15 X2 "
+    user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 " \
+                 "Safari/537.36 "
     chrome_options.add_argument(f'user-agent={user_agent}')
     chrome_prefs = dict()
     chrome_options.experimental_options["prefs"] = chrome_prefs
@@ -115,12 +115,12 @@ def set_chrome_options():
     return chrome_options
 
 
-def screenshot(browser, filename=None):
+def screenshot(_browser, filename=None):
     global screenshot_index
     if filename is None:
         filename = f'screenshot_{screenshot_index}'
 
-    browser.save_screenshot(f'{OUT_PATH}/{filename}.png')
+    _browser.save_screenshot(f'{OUT_PATH}/{filename}.png')
     screenshot_index += 1
 
 
@@ -149,19 +149,27 @@ def get_process_script():
     return content
 
 
-def fetch_json_data(browser: WebDriver):
-    output = browser.execute_async_script(get_process_script(), 'get_ersttermin_json')
+def fetch_json_data(_browser: WebDriver):
+    output = _browser.execute_async_script(get_process_script(), 'get_ersttermin_json')
     write_file('ersttermin.json', output)
 
-    output = browser.execute_async_script(get_process_script(), 'get_vaccination_list_json')
+    output = _browser.execute_async_script(get_process_script(), 'get_vaccination_list_json')
     write_file('vaccination-list.json', output)
 
-    output = browser.execute_async_script(get_process_script(), 'get_version')
+    output = _browser.execute_async_script(get_process_script(), 'get_version')
     write_file('version.txt', output)
 
 
+def check_429():
+    console = json.dumps(browser.get_log('browser'))
+    if "429" in console:
+        # driver.execute_script("return localStorage.setItem('nfa-show-cinfo-20201110-VP1246', true)")
+        write_file('console.log', console)
+        raise Error(f'got 429 error')
+
+
 def process(name, code, postal_code, url):
-    global driver
+    global browser
 
     # chrome_options = set_chrome_options()
     # driver = webdriver.Chrome(options=chrome_options)
@@ -171,141 +179,151 @@ def process(name, code, postal_code, url):
     print(f'[{name}] {get_timestamp()}', end=' ', flush=True)
 
     try:
-        driver.get(web_url)
+        browser.get(web_url)
 
         time.sleep(1)
 
         # we will take screenshots from time to time, this being the initial one
-        screenshot(driver)
+        screenshot(browser)
+
+        # check_429()
 
         # check if the page is currently in maintenance mode
-        if "Wartungsarbeiten" in driver.page_source:
+        if "Wartungsarbeiten" in browser.page_source:
             print('site is currently in maintenance mode')
             return False
 
         if code:
             # check if the challenge validation page is the current one (this should be the case, anyway)
-            if "Challenge Validation" in driver.title:
+            if "Challenge Validation" in browser.title:
                 timeout_sec = 60
                 timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
                 # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
-                while "Challenge Validation" in driver.title:
+                while "Challenge Validation" in browser.title:
                     print('.', end='')
                     time.sleep(3)
                     if datetime.datetime.now() > timeout_after:
                         raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec}s)')
 
-                screenshot(driver)
+                screenshot(browser)
                 print(' ', end='')
 
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
-            if "Cookie Hinweis" in driver.page_source:
-                driver.find_element_by_class_name("cookies-info-close").click()
+            if "Cookie Hinweis" in browser.page_source:
+                browser.find_element_by_class_name("cookies-info-close").click()
                 print('X ', end='')
                 time.sleep(2)
-                screenshot(driver)
+                screenshot(browser)
 
-            driver.get(web_url)
+            # print(driver.execute_script("return localStorage.getItem('nfa-cookie-settings')"))
+            # print(driver.execute_script("return localStorage.getItem('nfa-show-cinfo-20201110-VP1246')"))
+
+            if browser.current_url == "https://005-iz.impfterminservice.de/impftermine":
+                print(f'reload')
+                print(web_url)
+                browser.get(web_url)
+                time.sleep(1)
+
+            print(browser.current_url)
+
             time.sleep(1)
-            screenshot(driver)
+            screenshot(browser)
 
             # check for 429 errors in the browser console logs
-            console = json.dumps(driver.get_log('browser'))
-            if "429" in console:
-                raise Error(f'got 429 error')
+            check_429()
 
             # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
-            if "wählen Sie bitte ein Terminpaar" not in driver.page_source:
+            if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
                 raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
 
-            driver.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
-                                                "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
-                                                "> div.its-search-step-content > button").click()
+            browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
+                                                 "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
+                                                 "> div.its-search-step-content > button").click()
             time.sleep(1)
-            screenshot(driver)
+            screenshot(browser)
 
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
-            if "Cookie Hinweis" in driver.page_source:
-                driver.find_element_by_class_name("cookies-info-close").click()
+            if "Cookie Hinweis" in browser.page_source:
+                browser.find_element_by_class_name("cookies-info-close").click()
                 time.sleep(1)
-                screenshot(driver)
+                screenshot(browser)
 
-            if "leider keine Termine" in driver.page_source:
+            if "leider keine Termine" in browser.page_source:
                 print(f'no appointments available')
                 return False
 
             else:
                 print(f'Success: at least one appointment found.')
-                write_file('form.html', driver.page_source)
+                write_file('form.html', browser.page_source)
 
                 success = True
 
-            screenshot(driver)
+            screenshot(browser)
             return success
 
         else:
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
-            if "Cookie Hinweis" in driver.page_source:
-                driver.find_element_by_class_name("cookies-info-close").click()
+            if "Cookie Hinweis" in browser.page_source:
+                browser.find_element_by_class_name("cookies-info-close").click()
                 time.sleep(3)
-            screenshot(driver)
+            screenshot(browser)
 
             # now we should see a page with a "Wurde Ihr Anspruch auf .." text
-            if "Wurde Ihr Anspruch" not in driver.page_source:
+            if "Wurde Ihr Anspruch" not in browser.page_source:
                 raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
 
             # click on "Nein"
-            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > '
-                                                'label:nth-child(2) > span').click()
+            browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > '
+                                                 'label:nth-child(2) > span').click()
             # wait some time
             time.sleep(5)
-            screenshot(driver)
+            screenshot(browser)
 
-            if "Es wurden keine freien" in driver.page_source:
+            if "Es wurden keine freien" in browser.page_source:
                 print(f'no appointments available (1)')
                 return False
 
-            if "Folgende Personen" not in driver.page_source:
+            if "Folgende Personen" not in browser.page_source:
                 raise Error(f'was expecting to see "Folgende Personen" but this string was not found')
 
-            if "Gehören Sie" not in driver.page_source:
+            if "Gehören Sie" not in browser.page_source:
                 raise Error(f'was expecting to see "Gehören Sie..." but this string was not found')
 
-            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > '
-                                                'div.ets-login-form-section.in > div > app-corona-vaccination-no > '
-                                                'form > div.form-group.d-flex.justify-content-center > div > div > '
-                                                'label:nth-child(1) > span').click()
+            browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > '
+                                                 'div.ets-login-form-section.in > div > app-corona-vaccination-no > '
+                                                 'form > div.form-group.d-flex.justify-content-center > div > div > '
+                                                 'label:nth-child(1) > span').click()
 
             age = "71"
-            driver.find_element_by_xpath(f"//input[@name='age']").send_keys(age)
+            browser.find_element_by_xpath(f"//input[@name='age']").send_keys(age)
             time.sleep(2)
-            screenshot(driver)
+            screenshot(browser)
 
-            driver.find_element_by_css_selector('app-corona-vaccination-no > form > div:nth-child(4) > button').click()
+            browser.find_element_by_css_selector('app-corona-vaccination-no > form > div:nth-child(4) > button').click()
             time.sleep(1)
-            screenshot(driver)
+            screenshot(browser)
 
-            if "Es wurden keine freien Termine" in driver.page_source:
+            if "Es wurden keine freien Termine" in browser.page_source:
                 print(f'no appointments available (2)')
                 return False
 
-            write_file('page.html', driver.page_source)
+            write_file('page.html', browser.page_source)
             print(f'Success: saved page source to page.html..')
             return True
 
     except Error as error:
         print(error)
-        write_file('console.log', json.dumps(driver.get_log('browser')))
+        # write_file('console.log', json.dumps(driver.get_log('browser')))
 
     except Exception as e:
         print(e)
         ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
-        write_file(f'error-{ts_string}-console.log', json.dumps(driver.get_log('browser')))
+        write_file(f'error-{ts_string}-console.log', json.dumps(browser.get_log('browser')))
         print(f"""got an error while trying to parse the page.
 Will save the screenshot and page source to error-{ts_string}-*""")
         print(e)
-        screenshot(driver, f'error-{ts_string}-screenshot')
-        write_file(f'error-{ts_string}-pagesource.html', driver.page_source)
+        screenshot(browser, f'error-{ts_string}-screenshot')
+        write_file(f'error-{ts_string}-pagesource.html', browser.page_source)
 
         files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
         if RECIPIENT:
@@ -325,7 +343,7 @@ Will save the screenshot and page source to error-{ts_string}-*""")
         return False
 
     finally:
-        write_file('all-cookies.json', json.dumps(driver.get_cookies()))
+        write_file('all-cookies.json', json.dumps(browser.get_cookies()))
         # driver.close()
 
 
@@ -344,7 +362,14 @@ def get_config(config_file):
         return data
 
 
-driver: WebDriver
+browser: WebDriver
+
+
+def setup_browser():
+    global browser
+
+    chrome_options = set_chrome_options()
+    browser = webdriver.Chrome(options=chrome_options)
 
 
 def main():
@@ -370,9 +395,7 @@ If you can read this text, everything is just fine!""",
     config_file = os.path.join(os.path.dirname(__file__), '..', args.config)
     config = get_config(config_file)
 
-    global driver
-    chrome_options = set_chrome_options()
-    driver = webdriver.Chrome(options=chrome_options)
+    setup_browser()
 
     while True:
         success = False
