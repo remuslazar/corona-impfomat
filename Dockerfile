@@ -13,6 +13,11 @@ RUN apt-get -y update \
   && apt-get install -yqq unzip \
   && rm -rf /var/lib/apt/lists/*
 
+# Install xvfb and xserver
+RUN apt-get -y update \
+  && apt-get install -y xvfb xserver-xephyr tigervnc-standalone-server xfonts-base \
+  && rm -rf /var/lib/apt/lists/*
+
 # Download and install the Chrome Driver
 RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip \
   && unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/ \

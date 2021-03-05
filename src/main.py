@@ -20,8 +20,10 @@ from email.mime.application import MIMEApplication
 
 from selenium.webdriver.chrome.webdriver import WebDriver
 import json
+from pyvirtualdisplay import Display
 
 screenshot_index = 1
+display: Display
 
 # SES and mail configuration
 SENDER = os.environ.get('SENDER')
@@ -97,20 +99,34 @@ Corona Impf-o-mat
         RawMessage={'Data': msg.as_string()}
     )
 
+def start_display():
+    global display
+    display = Display(visible=True, size=(800, 600), backend="xvfb")
+    display.start()
+
+
+def stop_display():
+    display.stop()
+
 
 def set_chrome_options():
     """Sets chrome options for Selenium.
     Chrome options for headless browser is enabled.
     """
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    chrome_options = webdriver.ChromeOptions()
+    # chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("window-size=923,1011")
     user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 " \
                  "Safari/537.36 "
     chrome_options.add_argument(f'user-agent={user_agent}')
+
     chrome_prefs = dict()
     chrome_options.experimental_options["prefs"] = chrome_prefs
+    chrome_options.experimental_options["excludeSwitches"] = ["enable-automation"]
+    chrome_options.experimental_options["useAutomationExtension"] = False
     chrome_prefs["profile.default_content_settings"] = {"images": 2}
     return chrome_options
 
@@ -396,6 +412,8 @@ If you can read this text, everything is just fine!""",
     config = get_config(config_file)
 
     setup_browser()
+
+    print(f"Using Chrome Browser v{browser.capabilities['browserVersion']}")
 
     while True:
         success = False
