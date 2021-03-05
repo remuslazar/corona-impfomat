@@ -420,6 +420,7 @@ If you can read this text, everything is just fine!""",
                                           party['recipient'], party['age'])
                         if success:
                             send_mail(
+                                party['recipient'],
                                 f'Corona Impf-o-mat :: Notification',
                                 f"""Corona vaccines are currently available, see the attached screenshots.
             
