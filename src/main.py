@@ -106,7 +106,8 @@ def set_chrome_options():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15"
+    user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
+                 "Version/14.0.3 Safari/605.1.15 X2 "
     chrome_options.add_argument(f'user-agent={user_agent}')
     chrome_prefs = dict()
     chrome_options.experimental_options["prefs"] = chrome_prefs
@@ -114,12 +115,12 @@ def set_chrome_options():
     return chrome_options
 
 
-def screenshot(driver, filename=None):
+def screenshot(browser, filename=None):
     global screenshot_index
     if filename is None:
         filename = f'screenshot_{screenshot_index}'
 
-    driver.save_screenshot(f'{OUT_PATH}/{filename}.png')
+    browser.save_screenshot(f'{OUT_PATH}/{filename}.png')
     screenshot_index += 1
 
 
@@ -128,9 +129,9 @@ def get_timestamp():
     return datetime.datetime.now(tz)
 
 
-def get_url(code, postal_code, url, vaccine_code):
+def get_url(code, postal_code, url):
     if code:
-        return url.format(code=code, postal_code=postal_code, vaccine_code=vaccine_code)
+        return f'{url}impftermine/suche/{code}/{postal_code}/'
     else:
         return f'{url}impftermine/service?plz={postal_code}'
 
@@ -148,24 +149,26 @@ def get_process_script():
     return content
 
 
-def fetch_json_data(driver: WebDriver):
-    output = driver.execute_async_script(get_process_script(), 'get_ersttermin_json')
+def fetch_json_data(browser: WebDriver):
+    output = browser.execute_async_script(get_process_script(), 'get_ersttermin_json')
     write_file('ersttermin.json', output)
 
-    output = driver.execute_async_script(get_process_script(), 'get_vaccination_list_json')
+    output = browser.execute_async_script(get_process_script(), 'get_vaccination_list_json')
     write_file('vaccination-list.json', output)
 
-    output = driver.execute_async_script(get_process_script(), 'get_version')
+    output = browser.execute_async_script(get_process_script(), 'get_version')
     write_file('version.txt', output)
 
 
-def process(code, postal_code, url, vaccine_code, address):
-    chrome_options = set_chrome_options()
-    driver = webdriver.Chrome(options=chrome_options)
+def process(name, code, postal_code, url):
+    global driver
 
-    web_url = get_url(code=code, postal_code=postal_code, url=url, vaccine_code=vaccine_code)
+    # chrome_options = set_chrome_options()
+    # driver = webdriver.Chrome(options=chrome_options)
 
-    print(get_timestamp(), end=' ', flush=True)
+    web_url = get_url(code=code, postal_code=postal_code, url=url)
+
+    print(f'[{name}] {get_timestamp()}', end=' ', flush=True)
 
     try:
         driver.get(web_url)
@@ -198,79 +201,42 @@ def process(code, postal_code, url, vaccine_code, address):
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
             if "Cookie Hinweis" in driver.page_source:
                 driver.find_element_by_class_name("cookies-info-close").click()
+                print('X ', end='')
                 time.sleep(2)
                 screenshot(driver)
 
-            driver.find_element_by_xpath("//label[@class='ets-radio-control']").click()
-            time.sleep(1)
-            screenshot(driver)
-
-            codes = code.split('-')
-            driver.find_element_by_xpath(f"//input[@name='ets-input-code-0']").send_keys(codes[0])
-            driver.find_element_by_xpath(f"//input[@name='ets-input-code-1']").send_keys(codes[1])
-            driver.find_element_by_xpath(f"//input[@name='ets-input-code-2']").send_keys(codes[2])
-
-            time.sleep(2)
-            screenshot(driver)
-
-            driver.find_element_by_css_selector('app-corona-vaccination-yes > form > div:nth-child(3) > button').click()
-            time.sleep(1)
-            screenshot(driver)
-
-            # fetch_json_data(driver)
-
-            # now we do re-fetch the url for weird reasons..
             driver.get(web_url)
-            time.sleep(3)
+            time.sleep(1)
             screenshot(driver)
 
-            # now we should see a page with a "Onlinebuchung für Ihre Corona-Schutzimpfung" text
-            if "Onlinebuchung" not in driver.page_source:
-                raise Error(f'was expecting to see "Onlinebuchung" but this string was not found')
+            # check for 429 errors in the browser console logs
+            console = json.dumps(driver.get_log('browser'))
+            if "429" in console:
+                raise Error(f'got 429 error')
 
-            driver.find_element_by_xpath("//button[@data-target='#itsSearchAppointmentsModal']").click()
-            time.sleep(3)
+            # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
+            if "wählen Sie bitte ein Terminpaar" not in driver.page_source:
+                raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
+
+            driver.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
+                                                "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
+                                                "> div.its-search-step-content > button").click()
+            time.sleep(1)
             screenshot(driver)
 
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
             if "Cookie Hinweis" in driver.page_source:
                 driver.find_element_by_class_name("cookies-info-close").click()
                 time.sleep(1)
-
-            success = False
+                screenshot(driver)
 
             if "leider keine Termine" in driver.page_source:
-                text = driver.find_element_by_class_name("ets-search-no-results").text
-                write_file('no-appointments-text.txt', text)
                 print(f'no appointments available')
+                return False
 
             else:
-                if "Gefundene Termine" not in driver.page_source:
-                    raise Error(f'was expecting to see "Gefundene Termine" but this string was not found')
-
-                screenshot(driver)
-                driver.find_element_by_class_name('ets-slot-button').click()
-                time.sleep(3)
-                print(f'Success: at least one appointment found, I will try too book the first one..')
+                print(f'Success: at least one appointment found.')
                 write_file('form.html', driver.page_source)
-
-                salutation = address['salutation']
-                driver.find_element_by_xpath(f"//input[@name='salutation'][@value='{salutation}'").click()
-                driver.find_element_by_xpath(f"//input[@name='firstname']").send_keys(address['surname'])
-                driver.find_element_by_xpath(f"//input[@name='lastname']").send_keys(address['name'])
-                driver.find_element_by_xpath(f"//input[@name='plz']").send_keys(address['postal_code'])
-                driver.find_element_by_xpath(f"//input[@name='city']").send_keys(address['city'])
-                driver.find_element_by_xpath(f"//input[@formcontrolname='street']").send_keys(address['street'])
-                driver.find_element_by_xpath(f"//input[@formcontrolname='housenumber']").send_keys(address['street_no'])
-                driver.find_element_by_xpath(f"//input[@name='name='phone']").send_keys(address['phone'])
-                driver.find_element_by_xpath(f"//input[@name='notificationReceiver']").send_keys(address['email'])
-                screenshot(driver)
-
-                time.sleep(1)
-                driver.find_element_by_xpath(f"//button[@type='submit']").click()
-
-                time.sleep(3)
-                write_file('after-submit.html', driver.page_source)
 
                 success = True
 
@@ -289,7 +255,8 @@ def process(code, postal_code, url, vaccine_code, address):
                 raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
 
             # click on "Nein"
-            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > label:nth-child(2) > span').click()
+            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > '
+                                                'label:nth-child(2) > span').click()
             # wait some time
             time.sleep(5)
             screenshot(driver)
@@ -304,9 +271,12 @@ def process(code, postal_code, url, vaccine_code, address):
             if "Gehören Sie" not in driver.page_source:
                 raise Error(f'was expecting to see "Gehören Sie..." but this string was not found')
 
-            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > div.ets-login-form-section.in > div > app-corona-vaccination-no > form > div.form-group.d-flex.justify-content-center > div > div > label:nth-child(1) > span').click()
+            driver.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > '
+                                                'div.ets-login-form-section.in > div > app-corona-vaccination-no > '
+                                                'form > div.form-group.d-flex.justify-content-center > div > div > '
+                                                'label:nth-child(1) > span').click()
 
-            age="71"
+            age = "71"
             driver.find_element_by_xpath(f"//input[@name='age']").send_keys(age)
             time.sleep(2)
             screenshot(driver)
@@ -356,7 +326,7 @@ Will save the screenshot and page source to error-{ts_string}-*""")
 
     finally:
         write_file('all-cookies.json', json.dumps(driver.get_cookies()))
-        driver.close()
+        # driver.close()
 
 
 def remove_screenshot_files():
@@ -374,9 +344,13 @@ def get_config(config_file):
         return data
 
 
+driver: WebDriver
+
+
 def main():
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
-    parser.add_argument('--config', help="Path to the configuration file. See documentation for details.", default="config.yml")
+    parser.add_argument('--config', help="Path to the configuration file. See documentation for details.",
+                        default="config.yml")
     parser.add_argument('--retry', help="Retry time in seconds, 0 to disable", type=int, default=0)
     parser.add_argument('--test-mail', help="Just send a mail for testing")
 
@@ -393,22 +367,25 @@ If you can read this text, everything is just fine!""",
                   None)
         sys.exit()
 
-    config_file = os.path.join(os.path.dirname(__file__),  '..', args.config)
+    config_file = os.path.join(os.path.dirname(__file__), '..', args.config)
     config = get_config(config_file)
 
+    global driver
+    chrome_options = set_chrome_options()
+    driver = webdriver.Chrome(options=chrome_options)
+
     while True:
+        success = False
         for item, doc in config.items():
             if item == 'parties':
                 for party in doc:
                     web_url = get_url(code=party['code'],
                                       postal_code=party['address']['postal_code'],
-                                      url=party['url'],
-                                      vaccine_code=party['vaccine_code'])
+                                      url=party['url'])
 
-                    print(f'Using URL: {web_url}')
                     remove_screenshot_files()
                     try:
-                        success = process(party['code'], party['address']['postal_code'], party['url'], party['vaccine_code'], party['address'])
+                        success = process(party['name'], party['code'], party['address']['postal_code'], party['url'])
                         if success:
                             send_mail(
                                 f'Corona Impf-o-mat :: Notification',
