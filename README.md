@@ -65,6 +65,15 @@ app_1  | 2021-02-03 19:51:54.236332+01:00 no appointments available
 The service will exit after the first successful attempt.
 
 
+Resources
+----
+
+* https://towardsdatascience.com/advanced-web-scraping-concepts-to-help-you-get-unstuck-17c0203de7ab
+* https://grantwinney.com/websites-requesting-access-to-motion-sensors/
+* https://gist.github.com/grantwinney/7e72df102373e721971edf09cde458ba
+* https://github.com/infosimples/detect-headless
+* https://intoli.com/blog/making-chrome-headless-undetectable/
+
 Author
 ----
 
