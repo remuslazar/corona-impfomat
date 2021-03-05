@@ -202,8 +202,6 @@ def process(name, code, postal_code, url):
         # we will take screenshots from time to time, this being the initial one
         screenshot(browser)
 
-        # check_429()
-
         # check if the page is currently in maintenance mode
         if "Wartungsarbeiten" in browser.page_source:
             print('site is currently in maintenance mode')
@@ -227,26 +225,15 @@ def process(name, code, postal_code, url):
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
             if "Cookie Hinweis" in browser.page_source:
                 browser.find_element_by_class_name("cookies-info-close").click()
-                print('X ', end='')
+                print('[accept cookies] ', end='')
                 time.sleep(2)
                 screenshot(browser)
 
-            # print(driver.execute_script("return localStorage.getItem('nfa-cookie-settings')"))
-            # print(driver.execute_script("return localStorage.getItem('nfa-show-cinfo-20201110-VP1246')"))
-
             if browser.current_url == "https://005-iz.impfterminservice.de/impftermine":
-                print(f'reload')
-                print(web_url)
+                print(f'[reload URL {web_url} ..] ', end='')
                 browser.get(web_url)
                 time.sleep(1)
-
-            print(browser.current_url)
-
-            time.sleep(1)
-            screenshot(browser)
-
-            # check for 429 errors in the browser console logs
-            check_429()
+                screenshot(browser)
 
             # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
             if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
@@ -387,7 +374,6 @@ def setup_browser():
     chrome_options = set_chrome_options()
     browser = webdriver.Chrome(options=chrome_options)
 
-
 def main():
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
     parser.add_argument('--config', help="Path to the configuration file. See documentation for details.",
@@ -411,6 +397,10 @@ If you can read this text, everything is just fine!""",
     config_file = os.path.join(os.path.dirname(__file__), '..', args.config)
     config = get_config(config_file)
 
+    remove_screenshot_files()
+
+    global browser
+    start_display()
     setup_browser()
 
     print(f"Using Chrome Browser v{browser.capabilities['browserVersion']}")
