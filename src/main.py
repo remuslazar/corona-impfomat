@@ -2,7 +2,6 @@
 
 import argparse
 
-from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 import time
 import sys
@@ -27,7 +26,6 @@ display: Display
 
 # SES and mail configuration
 SENDER = os.environ.get('SENDER')
-RECIPIENT = os.environ.get('RECIPIENT')
 AWS_REGION = os.environ.get('SES_AWS_REGION')
 CHARSET = "UTF-8"
 OUT_PATH = "../out"
@@ -79,8 +77,7 @@ def create_multipart_message(
     return msg
 
 
-def send_mail(
-        title: str, text: str = None, html: str = None, attachments: list = None) -> dict:
+def send_mail(recipient: str, title: str, text: str = None, html: str = None, attachments: list = None) -> dict:
     """
     Send email to recipients. Sends one mail to all recipients.
     The sender needs to be a verified email in SES.
@@ -91,13 +88,14 @@ def send_mail(
 -- 
 Corona Impf-o-mat
 """
-    msg = create_multipart_message(SENDER, [RECIPIENT], title, text, html, attachments)
+    msg = create_multipart_message(SENDER, [recipient], title, text, html, attachments)
     ses_client = boto3.client('ses')  # Use your settings here
     return ses_client.send_raw_email(
         Source=SENDER,
-        Destinations=[RECIPIENT],
+        Destinations=[recipient],
         RawMessage={'Data': msg.as_string()}
     )
+
 
 def start_display():
     global display
@@ -184,7 +182,7 @@ def check_429():
         raise Error(f'got 429 error')
 
 
-def process(name, code, postal_code, url):
+def process(name, code, postal_code, url, recipient):
     global browser
 
     # chrome_options = set_chrome_options()
@@ -329,8 +327,9 @@ Will save the screenshot and page source to error-{ts_string}-*""")
         write_file(f'error-{ts_string}-pagesource.html', browser.page_source)
 
         files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
-        if RECIPIENT:
-            send_mail('Corona Impf-o-mat :: Error',
+        if recipient:
+            send_mail(recipient,
+                      'Corona Impf-o-mat :: Error',
                       f"""There were errors while interacting with the URL
 
 {web_url}
@@ -374,6 +373,7 @@ def setup_browser():
     chrome_options = set_chrome_options()
     browser = webdriver.Chrome(options=chrome_options)
 
+
 def main():
     parser = argparse.ArgumentParser(description='Corona Impf-o-mat')
     parser.add_argument('--config', help="Path to the configuration file. See documentation for details.",
@@ -416,7 +416,8 @@ If you can read this text, everything is just fine!""",
 
                     remove_screenshot_files()
                     try:
-                        success = process(party['name'], party['code'], party['address']['postal_code'], party['url'])
+                        success = process(party['name'], party['code'], party['address']['postal_code'], party['url'],
+                                          party['recipient'])
                         if success:
                             send_mail(
                                 f'Corona Impf-o-mat :: Notification',
@@ -437,7 +438,8 @@ If you can read this text, everything is just fine!""",
                         break
 
                     if success:
-                        print(f'Exit on purpose after the first successful attempt')
+                        print(f'Will wait for extra 10 minutes now (after each successful attempt)')
+                        time.sleep(10 * 60)
                         break
 
                     time.sleep(args.retry)
