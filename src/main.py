@@ -499,11 +499,11 @@ To book an appointment, use this URL:
             except Exception as e:
                 print(f'processing error: {e}')
 
-            if args.retry == 0:
-                break
-
             # wait a short while before processing the next party
             time.sleep(10)
+
+        if args.retry == 0:
+            break
 
         time.sleep(args.retry)
 
