@@ -75,6 +75,17 @@ class Party:
     code: str = None
     age: 18 = None
     vaccine_code: str = None
+    last_check_timestamp: datetime.datetime = None
+    last_check_success: bool = None
+
+    def update_check_result(self, success: bool):
+        self.last_check_success = success
+        self.last_check_timestamp = datetime.datetime.now()
+
+    def last_check_duration(self):
+        if self.last_check_timestamp is None:
+            return None
+        return (datetime.datetime.now() - self.last_check_timestamp)
 
 
 class Error(Exception):
@@ -435,7 +446,8 @@ def main():
         send_mail('Test Mail',
                   f"""This is just a test.
                                     
-If you can read this text, everything is just fine!""",
+If you can read this text, everything is just fine!
+""",
                   None,
                   None)
         sys.exit()
@@ -456,6 +468,11 @@ If you can read this text, everything is just fine!""",
     while True:
         success = False
         for party in parties:
+
+            # if the last check was successful, skip processing for 30 minutes
+            if party.last_check_success is True and party.last_check_duration().min < 30:
+                continue
+
             web_url = get_url(code=party.code,
                               postal_code=party.address.postal_code,
                               url=party.url)
@@ -463,17 +480,19 @@ If you can read this text, everything is just fine!""",
             remove_screenshot_files()
             try:
                 success = process(party)
+                party.update_check_result(success)
+
                 if success:
                     send_mail(
                         party.recipient,
                         f'Corona Impf-o-mat :: Notification',
                         f"""Corona vaccines are currently available, see the attached screenshots.
-            
-            To book an appointment, use this URL:
-            
-            <{web_url}>
-            
-            """,
+
+To book an appointment, use this URL:
+
+<{web_url}>
+
+""",
                         None,
                         glob.glob(f'{OUT_PATH}/*.*'))
                     print(f'Email Notification was sent to {party.recipient}.')
@@ -484,12 +503,7 @@ If you can read this text, everything is just fine!""",
             if args.retry == 0:
                 break
 
-            if success:
-                print(f'Will wait for extra 10 minutes now (after each successful attempt)')
-                time.sleep(10 * 60)
-                break
-
-            # wait a short while between each party
+            # wait a short while before processing the next party
             time.sleep(10)
 
         time.sleep(args.retry)
