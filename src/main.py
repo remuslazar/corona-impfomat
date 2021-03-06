@@ -517,7 +517,7 @@ To book an appointment, use this URL:
 
 """,
                         None,
-                        glob.glob(f'{OUT_PATH}/*.*'))
+                        glob.glob(f'{OUT_PATH}/screenshot_*.*'))
                     print(f'Email Notification was sent to {party.recipient}.')
 
             except Exception as e:
