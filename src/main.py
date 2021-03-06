@@ -487,6 +487,8 @@ If you can read this text, everything is just fine!
                         f'Corona Impf-o-mat :: Notification',
                         f"""Corona vaccines are currently available, see the attached screenshots.
 
+Profile Name: {party.name}
+
 To book an appointment, use this URL:
 
 <{web_url}>
