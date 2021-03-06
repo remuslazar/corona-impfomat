@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+from dataclasses import dataclass, is_dataclass
+from typing import List
 
 from selenium import webdriver
 import time
@@ -29,6 +31,50 @@ SENDER = os.environ.get('SENDER')
 AWS_REGION = os.environ.get('SES_AWS_REGION')
 CHARSET = "UTF-8"
 OUT_PATH = "../out"
+
+
+# see https://stackoverflow.com/questions/51564841/creating-nested-dataclass-objects-in-python
+def nested_dataclass(*args, **kwargs):
+    def wrapper(cls):
+        cls = dataclass(cls, **kwargs)
+        original_init = cls.__init__
+
+        def __init__(self, *_args, **_kwargs):
+            for name, value in _kwargs.items():
+                field_type = cls.__annotations__.get(name, None)
+                if is_dataclass(field_type) and isinstance(value, dict):
+                    new_obj = field_type(**value)
+                    _kwargs[name] = new_obj
+            original_init(self, *_args, **_kwargs)
+
+        cls.__init__ = __init__
+        return cls
+
+    return wrapper(args[0]) if args else wrapper
+
+
+@dataclass
+class Address:
+    postal_code: str = None
+    salutation: str = None
+    street: str = None
+    street_no: str = None
+    surname: str = None
+    name: str = None
+    city: str = None
+    phone: str = None
+    email: str = None
+
+
+@nested_dataclass
+class Party:
+    name: str
+    recipient: str
+    address: Address
+    url: str
+    code: str = None
+    age: 18 = None
+    vaccine_code: str = None
 
 
 class Error(Exception):
@@ -182,15 +228,15 @@ def check_429():
         raise Error(f'got 429 error')
 
 
-def process(name, code, postal_code, url, recipient, age):
+def process(party):
     global browser
 
     # chrome_options = set_chrome_options()
     # driver = webdriver.Chrome(options=chrome_options)
 
-    web_url = get_url(code=code, postal_code=postal_code, url=url)
+    web_url = get_url(code=party.code, postal_code=party.address.postal_code, url=party.url)
 
-    print(f'[{name}] {get_timestamp()}', end=' ', flush=True)
+    print(f'[{party.name}] {get_timestamp()}', end=' ', flush=True)
 
     try:
         browser.get(web_url)
@@ -205,7 +251,7 @@ def process(name, code, postal_code, url, recipient, age):
             print('site is currently in maintenance mode')
             return False
 
-        if code:
+        if party.code:
             # check if the challenge validation page is the current one (this should be the case, anyway)
             if "Challenge Validation" in browser.title:
                 timeout_sec = 60
@@ -295,7 +341,7 @@ def process(name, code, postal_code, url, recipient, age):
                                                  'form > div.form-group.d-flex.justify-content-center > div > div > '
                                                  'label:nth-child(1) > span').click()
 
-            age_str = f'{age}'
+            age_str = f'{party.age}'
             browser.find_element_by_xpath(f"//input[@name='age']").send_keys(age_str)
             time.sleep(2)
             screenshot(browser)
@@ -327,8 +373,8 @@ Will save the screenshot and page source to error-{ts_string}-*""")
         write_file(f'error-{ts_string}-pagesource.html', browser.page_source)
 
         files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
-        if recipient:
-            send_mail(recipient,
+        if party.recipient:
+            send_mail(party.recipient,
                       'Corona Impf-o-mat :: Error',
                       f"""There were errors while interacting with the URL
 
@@ -397,6 +443,8 @@ If you can read this text, everything is just fine!""",
     config_file = os.path.join(os.path.dirname(__file__), '..', args.config)
     config = get_config(config_file)
 
+    parties: List[Party] = [Party(**party) for party in config['parties']]
+
     remove_screenshot_files()
 
     global browser
@@ -407,48 +455,44 @@ If you can read this text, everything is just fine!""",
 
     while True:
         success = False
-        for item, doc in config.items():
-            if item == 'parties':
-                for party in doc:
-                    web_url = get_url(code=party['code'],
-                                      postal_code=party['address']['postal_code'],
-                                      url=party['url'])
+        for party in parties:
+            web_url = get_url(code=party.code,
+                              postal_code=party.address.postal_code,
+                              url=party.url)
 
-                    remove_screenshot_files()
-                    try:
-                        recipient = party['recipient']
-                        success = process(party['name'], party['code'], party['address']['postal_code'], party['url'],
-                                          recipient, party['age'])
-                        if success:
-                            send_mail(
-                                recipient,
-                                f'Corona Impf-o-mat :: Notification',
-                                f"""Corona vaccines are currently available, see the attached screenshots.
+            remove_screenshot_files()
+            try:
+                success = process(party)
+                if success:
+                    send_mail(
+                        party.recipient,
+                        f'Corona Impf-o-mat :: Notification',
+                        f"""Corona vaccines are currently available, see the attached screenshots.
             
             To book an appointment, use this URL:
             
             <{web_url}>
             
             """,
-                                None,
-                                glob.glob(f'{OUT_PATH}/*.*'))
-                            print(f'Email Notification was sent to {recipient}.')
+                        None,
+                        glob.glob(f'{OUT_PATH}/*.*'))
+                    print(f'Email Notification was sent to {party.recipient}.')
 
-                    except Exception as e:
-                        print(f'processing error: {e}')
+            except Exception as e:
+                print(f'processing error: {e}')
 
-                    if args.retry == 0:
-                        break
+            if args.retry == 0:
+                break
 
-                    if success:
-                        print(f'Will wait for extra 10 minutes now (after each successful attempt)')
-                        time.sleep(10 * 60)
-                        break
+            if success:
+                print(f'Will wait for extra 10 minutes now (after each successful attempt)')
+                time.sleep(10 * 60)
+                break
 
-                    # wait a short while between each party
-                    time.sleep(10)
+            # wait a short while between each party
+            time.sleep(10)
 
-                time.sleep(args.retry)
+        time.sleep(args.retry)
 
 
 if __name__ == '__main__':
