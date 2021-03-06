@@ -73,7 +73,7 @@ class Party:
     address: Address
     url: str
     code: str = None
-    age: 18 = None
+    age: int = None
     vaccine_code: str = None
     last_check_timestamp: datetime.datetime = None
     last_check_success: bool = None
