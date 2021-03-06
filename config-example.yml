@@ -5,6 +5,7 @@ parties:
     url: https://005-iz.impfterminservice.de/
     vaccine_code: L920
     code:
+    postal_code:
     address:
       postal_code:
       salutation:

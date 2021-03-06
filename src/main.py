@@ -73,6 +73,7 @@ class Party:
     address: Address
     url: str
     code: str = None
+    postal_code: str = None
     age: int = None
     vaccine_code: str = None
     last_check_timestamp: datetime.datetime = None
@@ -245,7 +246,7 @@ def process(party):
     # chrome_options = set_chrome_options()
     # driver = webdriver.Chrome(options=chrome_options)
 
-    web_url = get_url(code=party.code, postal_code=party.address.postal_code, url=party.url)
+    web_url = get_url(code=party.code, postal_code=party.postal_code, url=party.url)
 
     print(f'[{party.name}] {get_timestamp()}', end=' ', flush=True)
 
@@ -473,7 +474,7 @@ If you can read this text, everything is just fine!
                 continue
 
             web_url = get_url(code=party.code,
-                              postal_code=party.address.postal_code,
+                              postal_code=party.postal_code,
                               url=party.url)
 
             remove_screenshot_files()
