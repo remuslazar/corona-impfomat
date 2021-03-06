@@ -389,6 +389,11 @@ def process(party):
         last_error = get_last_browser_error()
         if last_error:
             print(last_error)
+            if "429" in last_error:
+                print(f'Got 429 error: reset browser and wait 2 minutes')
+                browser.close()
+                time.sleep(2 * 60)
+                setup_browser()
 
     except Exception as e:
         print(e)
