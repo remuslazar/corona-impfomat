@@ -468,8 +468,8 @@ If you can read this text, everything is just fine!
     while True:
         for party in parties:
 
-            # if the last check was successful, skip processing for 30 minutes
-            if party.last_check_success is True and party.last_check_duration().min < 30:
+            # if the last check was successful, skip processing for 20 minutes
+            if party.last_check_success is True and party.last_check_duration().seconds < 20 * 60:
                 continue
 
             web_url = get_url(code=party.code,
