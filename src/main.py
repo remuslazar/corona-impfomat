@@ -510,6 +510,7 @@ If you can read this text, everything is just fine!
                         f"""Corona vaccines are currently available, see the attached screenshots.
 
 Profile Name: {party.name}
+Reservation Code: {party.code}
 
 To book an appointment, use this URL:
 
