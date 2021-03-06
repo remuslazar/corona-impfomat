@@ -85,7 +85,7 @@ class Party:
     def last_check_duration(self):
         if self.last_check_timestamp is None:
             return None
-        return (datetime.datetime.now() - self.last_check_timestamp)
+        return datetime.datetime.now() - self.last_check_timestamp
 
 
 class Error(Exception):
@@ -466,7 +466,6 @@ If you can read this text, everything is just fine!
     print(f"Using Chrome Browser v{browser.capabilities['browserVersion']}")
 
     while True:
-        success = False
         for party in parties:
 
             # if the last check was successful, skip processing for 30 minutes
