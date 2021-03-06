@@ -284,7 +284,7 @@ def process(party):
                 time.sleep(2)
                 screenshot(browser)
 
-            if browser.current_url == "https://005-iz.impfterminservice.de/impftermine":
+            if browser.current_url == f"{party.url}impftermine":
                 print(f'[reload URL {web_url} ..] ', end='')
                 browser.get(web_url)
                 time.sleep(1)
