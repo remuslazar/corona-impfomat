@@ -259,7 +259,7 @@ def process(party):
 
     web_url = get_url(code=party.code, postal_code=party.postal_code, url=party.url)
 
-    print(f'[{party.name}] ', end=' ', flush=True)
+    print(f'[{party.name}]', end=' ', flush=True)
 
     try:
         browser.get(web_url)
