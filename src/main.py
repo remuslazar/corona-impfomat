@@ -259,7 +259,7 @@ def process(party):
 
     web_url = get_url(code=party.code, postal_code=party.postal_code, url=party.url)
 
-    print(f'[{party.name}] {get_timestamp()}', end=' ', flush=True)
+    print(f'[{party.name}] ', end=' ', flush=True)
 
     try:
         browser.get(web_url)
@@ -403,33 +403,6 @@ def process(party):
                 browser.close()
                 time.sleep(2 * 60)
                 setup_browser()
-
-    except Exception as e:
-        print(e)
-        ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
-        write_file(f'error-{ts_string}-console.log', json.dumps(browser.get_log('browser')))
-        print(f"""got an error while trying to parse the page.
-Will save the screenshot and page source to error-{ts_string}-*""")
-        print(e)
-        screenshot(browser, f'error-{ts_string}-screenshot')
-        write_file(f'error-{ts_string}-pagesource.html', browser.page_source)
-
-        files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
-        if party.recipient:
-            send_mail(party.recipient,
-                      'Corona Impf-o-mat :: Error',
-                      f"""There were errors while interacting with the URL
-
-{web_url}
-
-{e}
-""",
-                      None,
-                      files)
-
-            for file in files:
-                os.remove(file)
-
         return False
 
     finally:
@@ -486,6 +459,7 @@ If you can read this text, everything is just fine!
     config_file = os.path.join(os.path.dirname(__file__), '..', args.config)
     config = get_config(config_file)
 
+    admin_email = config['admin_email']
     parties: List[Party] = [Party(**party) for party in config['parties']]
 
     remove_screenshot_files()
@@ -531,7 +505,33 @@ To book an appointment, use this URL:
                     print(f'Email Notification was sent to {party.recipient}.')
 
             except Exception as e:
-                print(f'processing error: {e}')
+                ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
+                write_file(f'error-{ts_string}-console.log', json.dumps(browser.get_log('browser')))
+                print(f"""got an error while trying to parse the page.
+                Will save the screenshot and page source to error-{ts_string}-*""")
+                screenshot(browser, f'error-{ts_string}-screenshot')
+                write_file(f'error-{ts_string}-pagesource.html', browser.page_source)
+
+                files = glob.glob(f'{OUT_PATH}/error-{ts_string}*')
+                if admin_email:
+                    send_mail(admin_email,
+                              f'Corona Impf-o-mat :: Error ({party.name})',
+                              f"""There were errors while interacting with the URL {web_url}:
+Party: {party.name}
+Code: {party.code}
+Postal Code: {party.postal_code}
+
+Error
+----
+
+{e}
+
+""",
+                              None,
+                              files)
+
+                    for file in files:
+                        os.remove(file)
 
             # wait a short while before processing the next party
             time.sleep(10)
