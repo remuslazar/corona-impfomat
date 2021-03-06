@@ -341,6 +341,15 @@ def process(party):
                 time.sleep(3)
             screenshot(browser)
 
+            if browser.current_url == f"{party.url}impftermine":
+                print(f'[reload] ', end='')
+                browser.get(web_url)
+                time.sleep(1)
+                screenshot(browser)
+
+            if browser.current_url == f"{party.url}impftermine":
+                raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
+
             # now we should see a page with a "Wurde Ihr Anspruch auf .." text
             if "Wurde Ihr Anspruch" not in browser.page_source:
                 raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
