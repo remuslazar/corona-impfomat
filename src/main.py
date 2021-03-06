@@ -22,6 +22,7 @@ from email.mime.application import MIMEApplication
 from selenium.webdriver.chrome.webdriver import WebDriver
 import json
 from pyvirtualdisplay import Display
+import re
 
 screenshot_index = 1
 display: Display
@@ -87,6 +88,10 @@ class Party:
         if self.last_check_timestamp is None:
             return None
         return datetime.datetime.now() - self.last_check_timestamp
+
+    @property
+    def identifier(self):
+        return re.sub('[^a-z]', '_', self.name.lower())
 
 
 class Error(Exception):
@@ -240,6 +245,12 @@ def check_429():
         raise Error(f'got 429 error')
 
 
+def get_last_browser_error():
+    logs = [log for log in browser.get_log('browser') if log['level'] == "SEVERE"]
+    if len(logs) == 0: return None
+    return logs.pop()['message']
+
+
 def process(party):
     global browser
 
@@ -286,10 +297,13 @@ def process(party):
                 screenshot(browser)
 
             if browser.current_url == f"{party.url}impftermine":
-                print(f'[reload URL {web_url} ..] ', end='')
+                print(f'[reload] ', end='')
                 browser.get(web_url)
                 time.sleep(1)
                 screenshot(browser)
+
+            if browser.current_url == f"{party.url}impftermine":
+                raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
 
             # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
             if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
@@ -372,7 +386,9 @@ def process(party):
 
     except Error as error:
         print(error)
-        # write_file('console.log', json.dumps(driver.get_log('browser')))
+        last_error = get_last_browser_error()
+        if last_error:
+            print(last_error)
 
     except Exception as e:
         print(e)
@@ -403,8 +419,8 @@ Will save the screenshot and page source to error-{ts_string}-*""")
         return False
 
     finally:
-        write_file('all-cookies.json', json.dumps(browser.get_cookies()))
-        # driver.close()
+        write_file(f'console_{party.identifier}.json', json.dumps(browser.get_log('browser')))
+        write_file(f'cookies_{party.identifier}.json', json.dumps(browser.get_cookies()))
 
 
 def remove_screenshot_files():
