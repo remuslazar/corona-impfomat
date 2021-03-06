@@ -292,12 +292,12 @@ def process(party):
             # dismiss the cookie banner, else we will not be able to click on stuff behind it
             if "Cookie Hinweis" in browser.page_source:
                 browser.find_element_by_class_name("cookies-info-close").click()
-                print('[accept cookies] ', end='')
+                print('(accept cookies) ', end='')
                 time.sleep(2)
                 screenshot(browser)
 
             if browser.current_url == f"{party.url}impftermine":
-                print(f'[reload] ', end='')
+                print(f'(reload) ', end='')
                 browser.get(web_url)
                 time.sleep(1)
                 screenshot(browser)
@@ -342,7 +342,7 @@ def process(party):
             screenshot(browser)
 
             if browser.current_url == f"{party.url}impftermine":
-                print(f'[reload] ', end='')
+                print(f'(reload) ', end='')
                 browser.get(web_url)
                 time.sleep(1)
                 screenshot(browser)
