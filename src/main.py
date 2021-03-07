@@ -56,6 +56,9 @@ def nested_dataclass(*args, **kwargs):
 
 
 class ScheduleStatus(Enum):
+    # initial status
+    init = 'init'
+
     # an appointment has been scheduled
     scheduled = 'scheduled'
 
@@ -64,6 +67,9 @@ class ScheduleStatus(Enum):
 
     # no appointment case (default, initial one)
     no_appointment = 'no appointment'
+
+    # error, e.g. 429 response and other errors not detected
+    error = 'error'
 
 
 @dataclass
@@ -91,16 +97,21 @@ class Party:
     vaccine_code: str = None
     last_check_timestamp: datetime.datetime = None
     last_check_success: bool = None
-    status: ScheduleStatus = None
+    status: ScheduleStatus = ScheduleStatus.init
+    last_error: Exception = None
+    error_notification_sent: bool = None
 
-    def update_status(self, new_status: ScheduleStatus):
+    def update_status(self, new_status: ScheduleStatus, error: Exception = None):
         self.status = new_status
+        if error:
+            self.last_error = error
         self.last_check_timestamp = datetime.datetime.now()
 
     def update_check_result(self, success: bool):
         self.last_check_success = success
         self.status = ScheduleStatus.pending if success else ScheduleStatus.no_appointment
         self.last_check_timestamp = datetime.datetime.now()
+        self.error_notification_sent = False
 
     def last_check_duration(self):
         if self.last_check_timestamp is None:
@@ -282,161 +293,148 @@ def process(party):
 
     web_url = get_url(code=party.code, postal_code=party.postal_code, url=party.url)
 
-    print(f'[{party.name}]', end=' ', flush=True)
+    print(f'[{party.name}] #{party.status.value}', end=' ', flush=True)
 
-    try:
-        browser.get(web_url)
+    browser.get(web_url)
 
-        time.sleep(1)
+    time.sleep(1)
 
-        # we will take screenshots from time to time, this being the initial one
-        screenshot(browser)
+    # we will take screenshots from time to time, this being the initial one
+    screenshot(browser)
 
-        # check if the page is currently in maintenance mode
-        if "Wartungsarbeiten" in browser.page_source:
-            print('site is currently in maintenance mode')
-            return False
+    # check if the page is currently in maintenance mode
+    if "Wartungsarbeiten" in browser.page_source:
+        print('site is currently in maintenance mode')
+        return False
 
-        if party.code:
-            # check if the challenge validation page is the current one (this should be the case, anyway)
-            if "Challenge Validation" in browser.title:
-                timeout_sec = 60
-                timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
-                # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
-                while "Challenge Validation" in browser.title:
-                    print('.', end='')
-                    time.sleep(3)
-                    if datetime.datetime.now() > timeout_after:
-                        raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec}s)')
-
-                screenshot(browser)
-                print(' ', end='')
-
-            # dismiss the cookie banner, else we will not be able to click on stuff behind it
-            if "Cookie Hinweis" in browser.page_source:
-                browser.find_element_by_class_name("cookies-info-close").click()
-                print('(accept cookies) ', end='')
-                time.sleep(2)
-                screenshot(browser)
-
-            if browser.current_url == f"{party.url}impftermine":
-                print(f'(reload) ', end='')
-                browser.get(web_url)
-                time.sleep(1)
-                screenshot(browser)
-
-            if browser.current_url == f"{party.url}impftermine":
-                raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
-
-            # check if there is already an appointment scheduled for this code
-            if "Ihr Termin am" in browser.page_source:
-                for h2 in browser.find_elements_by_css_selector('h2.ets-booking-headline'):
-                    print(f'({h2.text}) ', end='')
-                raise ErrorAlreadyScheduled(f'appointment already scheduled')
-
-            # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
-            if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
-                raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
-
-            browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
-                                                 "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
-                                                 "> div.its-search-step-content > button").click()
-            time.sleep(1)
-            screenshot(browser)
-
-            # dismiss the cookie banner, else we will not be able to click on stuff behind it
-            if "Cookie Hinweis" in browser.page_source:
-                browser.find_element_by_class_name("cookies-info-close").click()
-                time.sleep(1)
-                screenshot(browser)
-
-            if "leider keine Termine" in browser.page_source:
-                print(f'no appointments available')
-                return False
-
-            else:
-                print(f'Success: at least one appointment found.')
-                write_file('form.html', browser.page_source)
-
-                success = True
-
-            screenshot(browser)
-            return success
-
-        else:
-            # dismiss the cookie banner, else we will not be able to click on stuff behind it
-            if "Cookie Hinweis" in browser.page_source:
-                browser.find_element_by_class_name("cookies-info-close").click()
+    if party.code:
+        # check if the challenge validation page is the current one (this should be the case, anyway)
+        if "Challenge Validation" in browser.title:
+            timeout_sec = 60
+            timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
+            # wait for the "processing" page to disappear (we will be redirected to somewhere else after 30s
+            while "Challenge Validation" in browser.title:
+                print('.', end='')
                 time.sleep(3)
+                if datetime.datetime.now() > timeout_after:
+                    raise Error(f'Timeout in the "Challenge Validation" step has occurred (timeout={timeout_sec}s)')
+
             screenshot(browser)
+            print(' ', end='')
 
-            if browser.current_url == f"{party.url}impftermine":
-                print(f'(reload) ', end='')
-                browser.get(web_url)
-                time.sleep(1)
-                screenshot(browser)
-
-            if browser.current_url == f"{party.url}impftermine":
-                raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
-
-            # now we should see a page with a "Wurde Ihr Anspruch auf .." text
-            if "Wurde Ihr Anspruch" not in browser.page_source:
-                raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
-
-            # click on "Nein"
-            browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > '
-                                                 'label:nth-child(2) > span').click()
-            # wait some time
-            time.sleep(5)
-            screenshot(browser)
-
-            if "Es wurden keine freien" in browser.page_source:
-                print(f'no appointments available (1)')
-                return False
-
-            if "Folgende Personen" not in browser.page_source:
-                raise Error(f'was expecting to see "Folgende Personen" but this string was not found')
-
-            if "Gehören Sie" not in browser.page_source:
-                raise Error(f'was expecting to see "Gehören Sie..." but this string was not found')
-
-            browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > '
-                                                 'div.ets-login-form-section.in > div > app-corona-vaccination-no > '
-                                                 'form > div.form-group.d-flex.justify-content-center > div > div > '
-                                                 'label:nth-child(1) > span').click()
-
-            age_str = f'{party.age}'
-            browser.find_element_by_xpath(f"//input[@name='age']").send_keys(age_str)
+        # dismiss the cookie banner, else we will not be able to click on stuff behind it
+        if "Cookie Hinweis" in browser.page_source:
+            browser.find_element_by_class_name("cookies-info-close").click()
+            print('(accept cookies) ', end='')
             time.sleep(2)
             screenshot(browser)
 
-            browser.find_element_by_css_selector('app-corona-vaccination-no > form > div:nth-child(4) > button').click()
+        if browser.current_url == f"{party.url}impftermine":
+            print(f'(reload) ', end='')
+            browser.get(web_url)
             time.sleep(1)
             screenshot(browser)
 
-            if "Es wurden keine freien Termine" in browser.page_source:
-                print(f'no appointments available (2)')
-                return False
+        if browser.current_url == f"{party.url}impftermine":
+            raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
 
-            write_file('page.html', browser.page_source)
-            print(f'Success: saved page source to page.html..')
-            return True
+        # check if there is already an appointment scheduled for this code
+        if "Ihr Termin am" in browser.page_source:
+            for h2 in browser.find_elements_by_css_selector('h2.ets-booking-headline'):
+                print(f'({h2.text}) ', end='')
+            raise ErrorAlreadyScheduled(f'appointment already scheduled')
 
-    except Error as error:
-        print(error)
-        last_error = get_last_browser_error()
-        if last_error:
-            print(last_error)
-            if "429" in last_error:
-                print(f'Got 429 error: reset browser and wait 2 minutes')
-                browser.close()
-                time.sleep(2 * 60)
-                setup_browser()
-        return False
+        # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
+        if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
+            raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
 
-    finally:
-        write_file(f'console_{party.identifier}.json', json.dumps(browser.get_log('browser')))
-        write_file(f'cookies_{party.identifier}.json', json.dumps(browser.get_cookies()))
+        browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
+                                             "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
+                                             "> div.its-search-step-content > button").click()
+        time.sleep(1)
+        screenshot(browser)
+
+        # dismiss the cookie banner, else we will not be able to click on stuff behind it
+        if "Cookie Hinweis" in browser.page_source:
+            browser.find_element_by_class_name("cookies-info-close").click()
+            time.sleep(1)
+            screenshot(browser)
+
+        print('=> ', end='')
+
+        if "leider keine Termine" in browser.page_source:
+            print(f'no appointments available')
+            return False
+
+        else:
+            print(f'success: at least one appointment found.')
+            write_file('form.html', browser.page_source)
+
+            success = True
+
+        screenshot(browser)
+        return success
+
+    else:
+        # dismiss the cookie banner, else we will not be able to click on stuff behind it
+        if "Cookie Hinweis" in browser.page_source:
+            browser.find_element_by_class_name("cookies-info-close").click()
+            time.sleep(3)
+        screenshot(browser)
+
+        if browser.current_url == f"{party.url}impftermine":
+            print(f'(reload) ', end='')
+            browser.get(web_url)
+            time.sleep(1)
+            screenshot(browser)
+
+        if browser.current_url == f"{party.url}impftermine":
+            raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
+
+        # now we should see a page with a "Wurde Ihr Anspruch auf .." text
+        if "Wurde Ihr Anspruch" not in browser.page_source:
+            raise Error(f'was expecting to see "Wurde Ihr Anspruch" but this string was not found')
+
+        # click on "Nein"
+        browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > '
+                                             'label:nth-child(2) > span').click()
+        # wait some time
+        time.sleep(5)
+        screenshot(browser)
+
+        print('=> ', end='')
+
+        if "Es wurden keine freien" in browser.page_source:
+            print(f'no appointments available (1)')
+            return False
+
+        if "Folgende Personen" not in browser.page_source:
+            raise Error(f'was expecting to see "Folgende Personen" but this string was not found')
+
+        if "Gehören Sie" not in browser.page_source:
+            raise Error(f'was expecting to see "Gehören Sie..." but this string was not found')
+
+        browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(3) > div > div > div > '
+                                             'div.ets-login-form-section.in > div > app-corona-vaccination-no > '
+                                             'form > div.form-group.d-flex.justify-content-center > div > div > '
+                                             'label:nth-child(1) > span').click()
+
+        age_str = f'{party.age}'
+        browser.find_element_by_xpath(f"//input[@name='age']").send_keys(age_str)
+        time.sleep(2)
+        screenshot(browser)
+
+        browser.find_element_by_css_selector('app-corona-vaccination-no > form > div:nth-child(4) > button').click()
+        time.sleep(1)
+        screenshot(browser)
+
+        if "Es wurden keine freien Termine" in browser.page_source:
+            print(f'no appointments available (2)')
+            return False
+
+        write_file('page.html', browser.page_source)
+        print(f'Success: saved page source to page.html..')
+        return True
 
 
 def remove_screenshot_files():
@@ -510,6 +508,31 @@ If you can read this text, everything is just fine!
             if party.status == ScheduleStatus.scheduled and party.last_check_duration().seconds < 2 * 60 * 60:
                 continue
 
+            # if the party is in the error state and there was no successful check for the last 30 minutes, send an
+            # admin notification.
+            if (party.status == ScheduleStatus.error
+                    and party.last_check_duration().seconds > 30 * 60
+                    and not party.error_notification_sent):
+                if admin_email:
+                    files = glob.glob(f'{OUT_PATH}/*.*')
+                    send_mail(admin_email,
+                              f'Corona Impf-o-mat :: Error ({party.name})',
+                              f"""There were persistent errors:                              
+Party: {party.name}
+
+Error (last check at {party.last_check_timestamp}):
+----
+
+{party.last_error}
+
+""",
+                              None,
+                              files)
+
+                    party.error_notification_sent = True
+                    for file in files:
+                        os.remove(file)
+
             web_url = get_url(code=party.code,
                               postal_code=party.postal_code,
                               url=party.url)
@@ -517,6 +540,21 @@ If you can read this text, everything is just fine!
             remove_screenshot_files()
             try:
                 success = process(party)
+                old_status = party.status
+
+                if old_status == ScheduleStatus.error:
+                    if admin_email:
+                        send_mail(admin_email,
+                                  f'Corona Impf-o-mat :: Recovery ({party.name})',
+                                  f""":                              
+Party: {party.name}
+
+This is a recovery notification.
+
+Last successful check timestamp: {party.last_check_timestamp}
+
+""")
+
                 party.update_check_result(success)
 
                 if success:
@@ -541,11 +579,23 @@ To book an appointment, use this URL:
                 print(e)
                 party.update_status(ScheduleStatus.scheduled)
 
+            except Error as error:
+                party.update_status(ScheduleStatus.error, error=error)
+                print(error)
+                last_error = get_last_browser_error()
+                if last_error:
+                    print(last_error)
+                    if "429" in last_error:
+                        print(f'Got 429 error: reset browser and wait 2 minutes')
+                        browser.close()
+                        time.sleep(2 * 60)
+                        setup_browser()
+
             except Exception as e:
                 ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
                 write_file(f'error-{ts_string}-console.log', json.dumps(browser.get_log('browser')))
-                print(f"""got an error while trying to parse the page.
-                Will save the screenshot and page source to error-{ts_string}-*""")
+                print(f"Got an error while trying to parse the page, "
+                      f"will save the screenshot and page source to error-{ts_string}-*")
                 screenshot(browser, f'error-{ts_string}-screenshot')
                 write_file(f'error-{ts_string}-pagesource.html', browser.page_source)
 
@@ -570,8 +620,12 @@ Error
                     for file in files:
                         os.remove(file)
 
-            # wait a short while before processing the next party
-            time.sleep(10)
+            finally:
+                write_file(f'console_{party.identifier}.json', json.dumps(browser.get_log('browser')))
+                write_file(f'cookies_{party.identifier}.json', json.dumps(browser.get_cookies()))
+
+                # wait a short while before processing the next party
+                time.sleep(10)
 
         if args.retry == 0:
             break
