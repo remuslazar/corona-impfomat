@@ -23,6 +23,7 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 import json
 from pyvirtualdisplay import Display
 import re
+from enum import Enum
 
 screenshot_index = 1
 display: Display
@@ -54,6 +55,17 @@ def nested_dataclass(*args, **kwargs):
     return wrapper(args[0]) if args else wrapper
 
 
+class ScheduleStatus(Enum):
+    # an appointment has been scheduled
+    scheduled = 'scheduled'
+
+    # "appointments available" being detected, an email was sent to the user
+    pending = 'pending'
+
+    # no appointment case (default, initial one)
+    no_appointment = 'no appointment'
+
+
 @dataclass
 class Address:
     postal_code: str = None
@@ -79,9 +91,15 @@ class Party:
     vaccine_code: str = None
     last_check_timestamp: datetime.datetime = None
     last_check_success: bool = None
+    status: ScheduleStatus = None
+
+    def update_status(self, new_status: ScheduleStatus):
+        self.status = new_status
+        self.last_check_timestamp = datetime.datetime.now()
 
     def update_check_result(self, success: bool):
         self.last_check_success = success
+        self.status = ScheduleStatus.pending if success else ScheduleStatus.no_appointment
         self.last_check_timestamp = datetime.datetime.now()
 
     def last_check_duration(self):
@@ -485,7 +503,11 @@ If you can read this text, everything is just fine!
         for party in parties:
 
             # if the last check was successful, skip processing for 20 minutes
-            if party.last_check_success is True and party.last_check_duration().seconds < 20 * 60:
+            if party.status == ScheduleStatus.pending and party.last_check_duration().seconds < 20 * 60:
+                continue
+
+            # if the party has already a valid schedule, skip the processing for 2 hours
+            if party.status == ScheduleStatus.scheduled and party.last_check_duration().seconds < 2 * 60 * 60:
                 continue
 
             web_url = get_url(code=party.code,
@@ -517,7 +539,7 @@ To book an appointment, use this URL:
 
             except ErrorAlreadyScheduled as e:
                 print(e)
-                party.update_check_result(True)
+                party.update_status(ScheduleStatus.scheduled)
 
             except Exception as e:
                 ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
