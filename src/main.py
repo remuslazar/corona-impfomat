@@ -99,24 +99,24 @@ class Party:
     last_check_success: bool = None
     status: ScheduleStatus = ScheduleStatus.init
     last_error: Exception = None
-    error_notification_sent: bool = None
+    error_notification_sent: bool = False
 
     def update_status(self, new_status: ScheduleStatus, error: Exception = None):
         self.status = new_status
         if error:
             self.last_error = error
-        self.last_check_timestamp = datetime.datetime.now()
+        self.last_check_timestamp = get_timestamp()
 
     def update_check_result(self, success: bool):
         self.last_check_success = success
         self.status = ScheduleStatus.pending if success else ScheduleStatus.no_appointment
-        self.last_check_timestamp = datetime.datetime.now()
+        self.last_check_timestamp = get_timestamp()
         self.error_notification_sent = False
 
     def last_check_duration(self):
         if self.last_check_timestamp is None:
             return None
-        return datetime.datetime.now() - self.last_check_timestamp
+        return get_timestamp() - self.last_check_timestamp
 
     @property
     def identifier(self):
@@ -186,6 +186,7 @@ Corona Impf-o-mat
 """
     msg = create_multipart_message(SENDER, [recipient], title, text, html, attachments)
     ses_client = boto3.client('ses')  # Use your settings here
+    print(f'will send an email to {recipient}')
     return ses_client.send_raw_email(
         Source=SENDER,
         Destinations=[recipient],
@@ -473,8 +474,8 @@ def main():
 
     if args.test_mail:
         recipient = args.test_mail
-        print(f'Will send an email to {recipient}.')
-        send_mail('Test Mail',
+        send_mail(recipient,
+                  'Test Mail',
                   f"""This is just a test.
                                     
 If you can read this text, everything is just fine!
@@ -508,16 +509,17 @@ If you can read this text, everything is just fine!
             if party.status == ScheduleStatus.scheduled and party.last_check_duration().seconds < 2 * 60 * 60:
                 continue
 
-            # if the party is in the error state and there was no successful check for the last 30 minutes, send an
+            # if the party is in the error state for longer than 30 minutes, send an
             # admin notification.
             if (party.status == ScheduleStatus.error
-                    and party.last_check_duration().seconds > 30 * 60
+                    and (party.last_check_timestamp is None or party.last_check_duration().seconds > 30 * 60)
                     and not party.error_notification_sent):
                 if admin_email:
                     files = glob.glob(f'{OUT_PATH}/*.*')
                     send_mail(admin_email,
                               f'Corona Impf-o-mat :: Error ({party.name})',
-                              f"""There were persistent errors:                              
+                              f"""There were persistent errors.                              
+
 Party: {party.name}
 
 Error (last check at {party.last_check_timestamp}):
@@ -542,15 +544,13 @@ Error (last check at {party.last_check_timestamp}):
                 success = process(party)
                 old_status = party.status
 
-                if old_status == ScheduleStatus.error:
+                if old_status == ScheduleStatus.error and party.error_notification_sent:
                     if admin_email:
                         send_mail(admin_email,
                                   f'Corona Impf-o-mat :: Recovery ({party.name})',
-                                  f""":                              
+                                  f"""This is a recovery notification
+                                  
 Party: {party.name}
-
-This is a recovery notification.
-
 Last successful check timestamp: {party.last_check_timestamp}
 
 """)
@@ -573,7 +573,6 @@ To book an appointment, use this URL:
 """,
                         None,
                         glob.glob(f'{OUT_PATH}/screenshot_*.*'))
-                    print(f'Email Notification was sent to {party.recipient}.')
 
             except ErrorAlreadyScheduled as e:
                 print(e)
