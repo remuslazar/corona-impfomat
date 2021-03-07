@@ -99,6 +99,10 @@ class Error(Exception):
     pass
 
 
+class ErrorAlreadyScheduled(Exception):
+    pass
+
+
 def create_multipart_message(
         sender: str, recipients: list, title: str, text: str = None, html: str = None, attachments: list = None) \
         -> MIMEMultipart:
@@ -247,7 +251,8 @@ def check_429():
 
 def get_last_browser_error():
     logs = [log for log in browser.get_log('browser') if log['level'] == "SEVERE"]
-    if len(logs) == 0: return None
+    if len(logs) == 0:
+        return None
     return logs.pop()['message']
 
 
@@ -309,7 +314,7 @@ def process(party):
             if "Ihr Termin am" in browser.page_source:
                 for h2 in browser.find_elements_by_css_selector('h2.ets-booking-headline'):
                     print(f'({h2.text}) ', end='')
-                raise Error(f'appointment already scheduled')
+                raise ErrorAlreadyScheduled(f'appointment already scheduled')
 
             # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
             if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
@@ -509,6 +514,10 @@ To book an appointment, use this URL:
                         None,
                         glob.glob(f'{OUT_PATH}/screenshot_*.*'))
                     print(f'Email Notification was sent to {party.recipient}.')
+
+            except ErrorAlreadyScheduled as e:
+                print(e)
+                party.update_check_result(True)
 
             except Exception as e:
                 ts_string = get_timestamp().strftime('%Y%m%d%H%M%S')
