@@ -1,3 +1,5 @@
+admin_email: <valid e-mail address for admin notifications>
+
 parties:
   - name: A Name
     age: 18
