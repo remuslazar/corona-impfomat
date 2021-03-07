@@ -305,6 +305,12 @@ def process(party):
             if browser.current_url == f"{party.url}impftermine":
                 raise Error(f'Unable to access the page {web_url}, being redirected to {browser.current_url}')
 
+            # check if there is already an appointment scheduled for this code
+            if "Ihr Termin am" in browser.page_source:
+                for h2 in browser.find_elements_by_css_selector('h2.ets-booking-headline'):
+                    print(f'({h2.text}) ', end='')
+                raise Error(f'appointment already scheduled')
+
             # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
             if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
                 raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
