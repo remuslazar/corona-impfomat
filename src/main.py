@@ -105,7 +105,6 @@ class Party:
         self.status = new_status
         if error:
             self.last_error = error
-        self.last_check_timestamp = get_timestamp()
 
     def update_check_result(self, success: bool):
         self.last_check_success = success
