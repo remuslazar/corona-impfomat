@@ -511,7 +511,8 @@ If you can read this text, everything is just fine!
             # if the party is in the error state for longer than 30 minutes, send an
             # admin notification.
             if (party.status == ScheduleStatus.error
-                    and (party.last_check_timestamp is None or party.last_check_duration().seconds > 30 * 60)
+                    and party.last_check_timestamp is not None
+                    and party.last_check_duration().seconds > 30 * 60
                     and not party.error_notification_sent):
                 if admin_email:
                     files = glob.glob(f'{OUT_PATH}/*.*')
