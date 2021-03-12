@@ -185,7 +185,7 @@ Corona Impf-o-mat
 """
     msg = create_multipart_message(SENDER, [recipient], title, text, html, attachments)
     ses_client = boto3.client('ses')  # Use your settings here
-    print(f'will send an email to {recipient}')
+    print(f'will send an email to {recipient} from {SENDER}')
     return ses_client.send_raw_email(
         Source=SENDER,
         Destinations=[recipient],
