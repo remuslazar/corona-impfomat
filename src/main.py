@@ -350,7 +350,7 @@ def process(party):
         browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
                                              "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
                                              "> div.its-search-step-content > button").click()
-        time.sleep(1)
+        time.sleep(5)
         screenshot(browser)
 
         # dismiss the cookie banner, else we will not be able to click on stuff behind it
@@ -361,18 +361,21 @@ def process(party):
 
         print('=> ', end='')
 
+        screenshot(browser)
+
         if "leider keine Termine" in browser.page_source:
             print(f'no appointments available')
+            return False
+
+        elif "Termine werden gesucht" in browser.page_source:
+            print(f'timeout')
             return False
 
         else:
             print(f'success: at least one appointment found.')
             write_file('form.html', browser.page_source)
 
-            success = True
-
-        screenshot(browser)
-        return success
+            return True
 
     else:
         # dismiss the cookie banner, else we will not be able to click on stuff behind it
