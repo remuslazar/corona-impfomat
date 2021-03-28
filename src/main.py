@@ -110,7 +110,6 @@ class Party:
         self.last_check_success = success
         self.status = ScheduleStatus.pending if success else ScheduleStatus.no_appointment
         self.last_check_timestamp = get_timestamp()
-        self.error_notification_sent = False
 
     def last_check_duration(self):
         if self.last_check_timestamp is None:
@@ -546,6 +545,7 @@ Error (last check at {party.last_check_timestamp}):
 
                 if old_status == ScheduleStatus.error and party.error_notification_sent:
                     if admin_email:
+                        party.error_notification_sent = False
                         send_mail(admin_email,
                                   f'Corona Impf-o-mat :: Recovery ({party.name})',
                                   f"""This is a recovery notification
