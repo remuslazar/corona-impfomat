@@ -347,15 +347,15 @@ def process(party):
         if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
             raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
 
-        button = browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
-                                             "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
-                                             "> div.its-search-step-content > button")
+        # noinspection PyBroadException
+        try:
+            browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
+                                                 "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
+                                                 "> div.its-search-step-content > button").click()
 
-        if not button:
-            print(f'parsing error')
+        except Exception:
+            print(f'parsing error (button not found)')
             return False
-
-        button.click()
 
         time.sleep(5)
         screenshot(browser)
