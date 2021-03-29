@@ -523,6 +523,8 @@ If you can read this text, everything is just fine!
                               f"""There were persistent errors.                              
 
 Party: {party.name}
+Code: {party.code}
+Postal Code: {party.postal_code}
 
 Error (last check at {party.last_check_timestamp}):
 ----
