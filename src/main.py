@@ -343,6 +343,19 @@ def process(party):
                 print(f'({h2.text}) ', end='')
             raise ErrorAlreadyScheduled(f'appointment already scheduled')
 
+        if "Virtueller Warteraum" in browser.page_source:
+            timeout_sec = 600
+            timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
+            print('[virtual delay] ', end='')
+            while "Virtueller Warteraum" in browser.title:
+                print('.', end='')
+                time.sleep(3)
+                if datetime.datetime.now() > timeout_after:
+                    raise Error(f'Timeout in the "Virtueller Warteraum" step has occurred (timeout={timeout_sec}s)')
+
+            screenshot(browser)
+            print(' ', end='')
+
         # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
         if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
             raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
