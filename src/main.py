@@ -284,6 +284,15 @@ def get_last_browser_error():
     return logs.pop()['message']
 
 
+def dismiss_cookie_banner():
+    global browser
+    if "Cookie Hinweis" in browser.page_source:
+        browser.find_element_by_class_name("cookies-info-close").click()
+        print('(accept cookies) ', end='')
+        time.sleep(2)
+        screenshot(browser)
+
+
 def process(party):
     global browser
 
@@ -321,12 +330,7 @@ def process(party):
             screenshot(browser)
             print(' ', end='')
 
-        # dismiss the cookie banner, else we will not be able to click on stuff behind it
-        if "Cookie Hinweis" in browser.page_source:
-            browser.find_element_by_class_name("cookies-info-close").click()
-            print('(accept cookies) ', end='')
-            time.sleep(2)
-            screenshot(browser)
+        dismiss_cookie_banner()
 
         if browser.current_url == f"{party.url}impftermine":
             print(f'(reload) ', end='')
@@ -355,6 +359,8 @@ def process(party):
 
             screenshot(browser)
             print(' ', end='')
+
+        dismiss_cookie_banner()
 
         # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
         if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
