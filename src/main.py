@@ -347,7 +347,7 @@ def process(party):
             timeout_sec = 600
             timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
             print('[virtual delay] ', end='')
-            while "Virtueller Warteraum" in browser.title:
+            while "Virtueller Warteraum" in browser.page_source:
                 print('.', end='')
                 time.sleep(3)
                 if datetime.datetime.now() > timeout_after:
