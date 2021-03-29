@@ -614,7 +614,7 @@ To book an appointment, use this URL:
                 if admin_email:
                     send_mail(admin_email,
                               f'Corona Impf-o-mat :: Error ({party.name})',
-                              f"""There were errors while interacting with the URL {web_url}:
+                              f"""There were errors while interacting with the URL <{web_url}> :
 Party: {party.name}
 Code: {party.code}
 Postal Code: {party.postal_code}
