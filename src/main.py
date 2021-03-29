@@ -347,9 +347,16 @@ def process(party):
         if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
             raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
 
-        browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
+        button = browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
                                              "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
-                                             "> div.its-search-step-content > button").click()
+                                             "> div.its-search-step-content > button")
+
+        if not button:
+            print(f'parsing error')
+            return False
+
+        button.click()
+
         time.sleep(5)
         screenshot(browser)
 
