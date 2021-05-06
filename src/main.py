@@ -363,17 +363,15 @@ def process(party):
         dismiss_cookie_banner()
 
         # now we should see a page with a "wählen Sie bitte ein Terminpaar für Ihre Corona-Schutzimpfung" text
-        if "wählen Sie bitte ein Terminpaar" not in browser.page_source:
-            raise Error(f'was expecting to see "wählen Sie bitte ein Terminpaar" but this string was not found')
+        if "Termine suchen" not in browser.page_source:
+            raise Error(f'was expecting to see "Termine suchen" but this string was not found')
 
         # noinspection PyBroadException
         try:
-            browser.find_element_by_css_selector("app-page-its-search > div > div > div:nth-child(2) > div > div > "
-                                                 "div:nth-child(5) > div > div:nth-child(1) > div.its-search-step-body "
-                                                 "> div.its-search-step-content > button").click()
+            browser.find_element_by_css_selector("button.search-filter-button").click()
 
         except Exception:
-            print(f'parsing error (button not found)')
+            print(f'parsing error (button.search-filter-button not found)')
             return False
 
         time.sleep(5)
