@@ -310,10 +310,29 @@ def process(party):
     # we will take screenshots from time to time, this being the initial one
     screenshot(browser)
 
+    dismiss_cookie_banner()
+
     # check if the page is currently in maintenance mode
     if "Wartungsarbeiten" in browser.page_source:
         print('site is currently in maintenance mode')
         return False
+
+    dismiss_cookie_banner()
+
+    if "Virtueller Warteraum" in browser.page_source:
+        timeout_sec = 600
+        timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
+        print('[virtual delay] ', end='')
+        while "Virtueller Warteraum" in browser.page_source:
+            print('.', end='')
+            time.sleep(3)
+            if datetime.datetime.now() > timeout_after:
+                raise Error(f'Timeout in the "Virtueller Warteraum" step has occurred (timeout={timeout_sec}s)')
+
+        screenshot(browser)
+        print(' ', end='')
+
+    dismiss_cookie_banner()
 
     if party.code:
         # check if the challenge validation page is the current one (this should be the case, anyway)
@@ -346,19 +365,6 @@ def process(party):
             for h2 in browser.find_elements_by_css_selector('h2.ets-booking-headline'):
                 print(f'({h2.text}) ', end='')
             raise ErrorAlreadyScheduled(f'appointment already scheduled')
-
-        if "Virtueller Warteraum" in browser.page_source:
-            timeout_sec = 600
-            timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
-            print('[virtual delay] ', end='')
-            while "Virtueller Warteraum" in browser.page_source:
-                print('.', end='')
-                time.sleep(3)
-                if datetime.datetime.now() > timeout_after:
-                    raise Error(f'Timeout in the "Virtueller Warteraum" step has occurred (timeout={timeout_sec}s)')
-
-            screenshot(browser)
-            print(' ', end='')
 
         dismiss_cookie_banner()
 
