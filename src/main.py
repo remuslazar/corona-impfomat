@@ -408,12 +408,6 @@ def process(party):
             return True
 
     else:
-        # dismiss the cookie banner, else we will not be able to click on stuff behind it
-        if "Cookie Hinweis" in browser.page_source:
-            browser.find_element_by_class_name("cookies-info-close").click()
-            time.sleep(3)
-        screenshot(browser)
-
         if browser.current_url == f"{party.url}impftermine":
             print(f'(reload) ', end='')
             browser.get(web_url)
@@ -431,7 +425,7 @@ def process(party):
         browser.find_element_by_css_selector('app-corona-vaccination > div:nth-child(2) > div > div > '
                                              'label:nth-child(2) > span').click()
         # wait some time
-        time.sleep(5)
+        time.sleep(10)
         screenshot(browser)
 
         print('=> ', end='')
