@@ -325,14 +325,13 @@ def process(party):
         elapsed = 0
         timeout_after = datetime.datetime.now() + datetime.timedelta(seconds=timeout_sec)
         while "Virtueller Warteraum" in browser.page_source:
-            print('.', end='')
             time.sleep(step)
             elapsed += step
             if datetime.datetime.now() > timeout_after:
                 raise Error(f'Timeout in the "Virtueller Warteraum" step has occurred (timeout={timeout_sec}s)')
 
         screenshot(browser)
-        print(f'[virtual delay ({elapsed} sec)]')
+        print(f'(virtual delay, {elapsed} sec )', end='')
 
     dismiss_cookie_banner()
 
