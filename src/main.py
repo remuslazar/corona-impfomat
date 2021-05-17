@@ -331,7 +331,7 @@ def process(party):
                 raise Error(f'Timeout in the "Virtueller Warteraum" step has occurred (timeout={timeout_sec}s)')
 
         screenshot(browser)
-        print(f'(virtual delay, {elapsed} sec )', end='')
+        print(f'(virtual delay, {elapsed} sec) ', end='')
 
     dismiss_cookie_banner()
 
