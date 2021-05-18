@@ -527,6 +527,10 @@ If you can read this text, everything is just fine!
     while True:
         for party in parties:
 
+            web_url = get_url(code=party.code,
+                              postal_code=party.postal_code,
+                              url=party.url)
+
             # if the last check was successful, skip processing for 20 minutes
             if party.status == ScheduleStatus.pending and party.last_check_duration().seconds < 20 * 60:
                 continue
@@ -552,9 +556,14 @@ Code: {party.code}
 Postal Code: {party.postal_code}
 
 Error (last check at {party.last_check_timestamp}):
+
+----
+{party.last_error}
 ----
 
-{party.last_error}
+To book an appointment, use this URL:
+
+<{web_url}>
 
 """,
                               None,
@@ -563,10 +572,6 @@ Error (last check at {party.last_check_timestamp}):
                     party.error_notification_sent = True
                     for file in files:
                         os.remove(file)
-
-            web_url = get_url(code=party.code,
-                              postal_code=party.postal_code,
-                              url=party.url)
 
             remove_screenshot_files()
             try:
