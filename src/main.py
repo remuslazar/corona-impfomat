@@ -353,8 +353,9 @@ def process(party):
         dismiss_cookie_banner()
 
         if browser.current_url == f"{party.url}impftermine":
-            print(f'(reload) ', end='')
+            time.sleep(2)
             browser.get(web_url)
+            print(f'(reload) ', end='')
             time.sleep(1)
             screenshot(browser)
 
